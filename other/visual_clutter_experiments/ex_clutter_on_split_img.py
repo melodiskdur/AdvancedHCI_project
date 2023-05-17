@@ -23,7 +23,7 @@ _COLOR_POOL = 3
 _OUTPUT_TO_IMAGE = 0
 
 # IMAGE PARAMTERS & VARIABLES.
-_IMAGE_PATH = "309.jpg"
+_IMAGE_PATH = "" # "309.jpg"
 full_image = Image.open(_IMAGE_PATH)
 width, height = full_image.size
 # Sub-boxes of the original image.
