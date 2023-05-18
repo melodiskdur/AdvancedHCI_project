@@ -56,17 +56,17 @@ def calculate_scalars(points, num_neighbors):
     # Compute the nearest neighbors for each point
     neighbors = NearestNeighbors(n_neighbors=num_neighbors).fit(points)
     distances, _ = neighbors.kneighbors(points)
-    
+
     # Calculate the scalars for the points based on the distances
     # Add a small value to prevent division by zero
     scalars = 1.0 / (distances.mean(axis=1) + 1e-6)
-    
+
     return scalars
 
-def create_points_and_scalars(num_points_per_frame:int=100, 
-                              frame_width:int=10, 
-                              frame_height:int=8, 
-                              num_frames:int=10, 
+def create_points_and_scalars(num_points_per_frame:int=100,
+                              frame_width:int=10,
+                              frame_height:int=8,
+                              num_frames:int=10,
                               dist_between_frames:int=1,
                               num_neighbors:int=6):
     """
@@ -94,11 +94,11 @@ def create_points_and_scalars(num_points_per_frame:int=100,
 
         # Create points and add a specific z-value for each frame
         frame_points = np.array([np.array([x,y,-i*dist_between_frames]) for x,y in zip(x_values,y_values)])
-        
+
         # Append all the points created to points
         for p in frame_points:
             points.append(p)
-    
+
     # Change points to a numpy array for ease of use
     points = np.array(points)
 
@@ -127,7 +127,7 @@ def change_plotter_parameters(pl:pv.Plotter):
 def activate_thread(target:object, args:tuple):
     # Create a thread
     thread = threading.Thread(target=target, args=args)
-    
+
     # Start the thread
     thread.start()
 
@@ -150,9 +150,9 @@ def plot_data(plotter:pv.Plotter, points:list, scalars:list, width:int=10, heigh
             center=(width/2,height/2,-(num_frames*dist_between_frames)/2),
             x_length=width,
             y_length=height,
-            z_length=num_frames*dist_between_frames), 
-        color='white', 
-        style='wireframe', 
+            z_length=num_frames*dist_between_frames),
+        color='white',
+        style='wireframe',
         line_width=2)
 
     # Add all the points with their scalars to the plot
@@ -179,14 +179,14 @@ def plot_data(plotter:pv.Plotter, points:list, scalars:list, width:int=10, heigh
     # Add the xyz-axes visible in the lower left
     plotter.add_axes()
 
-    # Set an intial camera zoom 
+    # Set an intial camera zoom
     plotter.camera.zoom(1.2)
 
     # Show the plot i.e. everything we have added to the plotter
     # NOTE: interactive_update is set to tru to allow plotter.update() to run
     # This way we enable handling of input fro the user when plotting
     plotter.show(interactive_update=True)
-    
+
     # Continously update the window
     while True:
 
@@ -200,7 +200,7 @@ def plot_data(plotter:pv.Plotter, points:list, scalars:list, width:int=10, heigh
 ##############################################
 #////////////////--- Main ---/////////////////
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
 
     #-------------------
     # Plotting parameters
@@ -225,22 +225,22 @@ if __name__ == "__main__":
     #-------------------
     # Create and start a thread for plotting
     plot_thread = activate_thread(target=plot_data, args=(plotter,points,scalars,frame_width,frame_height,num_frames,dist_between_frames))
-    
+
     #-------------------
     # Create and start a thread for handling input
     with keyboard.GlobalHotKeys(HOTKEYS) as input_thread:
-        
+
         # NOTE: this line below can substitute the creation of plot_thread
         #plot_data(plotter,100,10,8,10)
 
         # Kill the input thread
         deactivate_thread(input_thread)
-    
+
     #-------------------
     #Kill the plotting thread
     deactivate_thread(plot_thread)
 
-    
+
 
 
 
