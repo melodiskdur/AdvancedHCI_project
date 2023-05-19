@@ -2,9 +2,16 @@ import numpy as np
 import pyvista as pv
 from sklearn.neighbors import NearestNeighbors
 import cmocean
+import json
 
 #################################################
 #////////////////--- Helpers ---/////////////////
+
+def apply_threshold(mylist,threshold):
+    return [(0 if x < threshold else x) for x in mylist]
+
+def force_within_range(mylist):
+    return [x / max(list(mylist)) for x in mylist]
 
 def create_nn_scalars(points:np.ndarray, num_neighbors, scalar_threshold=0.5):
     """
@@ -29,11 +36,10 @@ def create_nn_scalars(points:np.ndarray, num_neighbors, scalar_threshold=0.5):
     scalars = (1.0 / (distances.mean(axis=1) + 1e-10))
 
     # Scale the scalars to fit fully within [0,1]
-    max_s = max(list(scalars))
-    scalars = [s / max_s for s in scalars]
+    scalars = force_within_range(scalars)
 
     # Set all the scalars that are below the threshold to 0
-    scalars = [(0 if s < scalar_threshold else s) for s in scalars]
+    scalars = apply_threshold(scalars,scalar_threshold)
 
     return np.array(scalars)
 
@@ -74,6 +80,39 @@ def create_3d_points(
 
     return points
 
+def get_frame_ps_json(file_path,frame_number:float=0.0,scalar_type:str='feature_congestion',scalar_threshold:float=0.0):
+    """open and extract points and scalars from a data folder"""
+
+    # open the file and load the data
+    with open(file_path) as f:
+        data = json.load(f)
+    
+    # Initialize the points and scalars lists
+    points = []
+    scalars = []
+
+    # Loop all values in the obtained data
+    if isinstance(data,dict):
+        for val in data.values():
+            
+            # Append the point coordinates
+            points.append(np.array([float(val['center_xy'][0]),-float(val['center_xy'][1]),frame_number]))
+
+            # Add the wanted scalar
+            if scalar_type == 'feature_congestion':
+                scalars.append(val['feature_congestion'])
+            elif scalar_type == 'subband_entropy':
+                scalars.append(val['subband_entropy'])
+    
+    # Scale the scalars to fit fully within [0,1]
+    scalars = force_within_range(scalars)
+  
+    # Set all the scalars that are below the threshold to 0
+    scalars = apply_threshold(scalars,scalar_threshold)
+
+    return np.array(points), np.array(scalars)
+
+
 ###################################################
 #////////////////--- Rendering ---/////////////////
 
@@ -89,7 +128,7 @@ def add_plotter_cube(plotter:pv.Plotter,
     """
     actor = plotter.add_mesh(
         pv.Cube(
-            center=(cube_dims[0]/2,cube_dims[1]/2,-cube_dims[2]/2),
+            center=(cube_dims[0]/2,-cube_dims[1]/2,-cube_dims[2]/2),
             x_length=cube_dims[0],
             y_length=cube_dims[1],
             z_length=cube_dims[2]),
