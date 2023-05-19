@@ -12,7 +12,6 @@ import pyvista as pv
 from pyvistaqt import QtInteractor, MainWindow
 import pyvista_test as pvt
 
-
 class MainPlot():
     """
     The main plot, containing the points and scalars as 
@@ -22,18 +21,29 @@ class MainPlot():
     def __init__(self):
         # Create the frame
         self.frame = QtWidgets.QFrame()
+
+        # Intialize the data points and scalars
         self.points = None
         self.scalars = None
+        # TODO: specify folder instead of a single file (or add both options)
+        self.json_filepath = 'H:/Kursmaterial/AdvancedHCI/test_frame_10x20.json'
+        self.points, self.scalars = pvt.get_frame_ps_json(file_path=self.json_filepath, scalar_threshold=self.scalar_threshold)
 
-        self.num_points_per_frame = 20
-        self.frame_dimensions = (1024,768)
-        self.num_frames = 50
-        self.dist_between_frames = 50
-        self.num_neighbors = 4
-        self.scalar_threshold = 0.5
+        # Essential parameters
+        self.frame_dimensions = (1280,720)
+        self.num_frames = 1
+        self.dist_between_frames = 0
+        self.scalar_threshold = 0.8
 
-        self.load_points()
-        self.load_scalars()
+        #--------- TEST ---------
+        # Test parameters
+        self.num_points_per_frame = 1
+        self.num_neighbors = 0
+
+        # Test case
+        #self.load_points()
+        #self.load_scalars()
+        #------------------------
     
     def set_num_points_per_frame(self,val):
         if val < 0: val = 0
@@ -55,7 +65,7 @@ class MainPlot():
         if val <= 0: val = 1
         self.num_neighbors = val
     
-    def set_scalar_threshold(self,val:float):
+    def set_scalar_threshold(self,val):
         if val < 0: val = 0
         elif val > 1: val = 1
         self.scalar_threshold = val
@@ -73,7 +83,6 @@ class MainPlot():
             self.num_neighbors,
             self.scalar_threshold)
 
-
 class MyMainWindow(MainWindow):
     """
     The main window, basically the whole application
@@ -84,50 +93,64 @@ class MyMainWindow(MainWindow):
         #---------- Setup the main frame ----------
         #Create the main plot
         self.main_plot = MainPlot()
-        vlayout = QtWidgets.QVBoxLayout()
+        hlayout = QtWidgets.QHBoxLayout()
 
         #Add the pyvista interactor object
         self.plotter = QtInteractor(self.main_plot.frame)
-        vlayout.addWidget(self.plotter.interactor)
+        hlayout.addWidget(self.plotter.interactor)
         self.signal_close.connect(self.plotter.close)
-
+        
         #Set the frames layout of the main plot
-        self.main_plot.frame.setLayout(vlayout)
+        self.main_plot.frame.setLayout(hlayout)
         
 
         #Add the main plots frame as the central widget
         self.setCentralWidget(self.main_plot.frame)
 
-        #---------- Create the actions, toolbars and statusbars ----------
-        self._create_actions()
+        #---------- Create all the widgets etc ----------
 
-        self._create_buttons()
+        self._create_actions()      # Actions used by widgets (not buttons)
 
-        self._create_toolbars()
+        self._create_menus()        # Menubar atop of the application
 
-        self._create_statusbar()
+        self._create_buttons()      # Buttons with actions
 
-        self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        self.slider.setMaximumSize(100,20)
-        self.slider.setRange(0,20)
-        self.slider.setSingleStep(1)
-        self.slider.setTickInterval(5)
-        self.slider.setValue(self.main_plot.num_neighbors)
-        self.slider.setTickPosition(QtWidgets.QSlider.TicksBelow)        
-        self.slider.valueChanged.connect(self.change_num_neighbors_slider)
-  
-        self.main_plot.frame.layout().addWidget(self.slider)
+        self._create_toolbars()     # Movable objects containing widgets
 
-        self.result_label = QtWidgets.QLabel(f'N: {self.slider.value()}', self)
-        self.main_plot.frame.layout().addWidget(self.result_label)
+        self._create_statusbar()    # Displays helpful messages
+
+        vlayout = QtWidgets.QVBoxLayout()
+        hlayout.addLayout(vlayout)
+
+        vbox_slider = self.create_vbox_slider('test: ')
+
+        vlayout.addLayout(vbox_slider)
+
+        vbox_slider2 = self.create_vbox_slider('test: ')
+
+        vlayout.addLayout(vbox_slider2)
+
 
         """self.spinbox = QtWidgets.QSpinBox()
-        self.spinbox.setValue(self.main_plot.num_neighbors)
-        self.spinbox.valueChanged.connect(self.change_num_neighbors_spin)
+        self.spinbox.setValue(self.main_plot.scalar_threshold)
+        self.spinbox.valueChanged.connect(self.change_scalar_threshold_spin)
         self.spinbox.setFocusPolicy(QtCore.Qt.NoFocus)
         loadToolBar.addWidget(self.spinbox)"""
 
-        #---------- Set up the applications menu ----------
+        #---------- Load our main plot and show the application ----------
+        pvt.set_plotter_parameters(self.plotter,reset_cam_orientation=True)
+        self.load_main_plot()
+
+        # Show the application window
+        if show:
+            self.show()
+
+    #==========================================================================
+    #/////////////////////-- Essential Setup Methods --////////////////////////
+    #==========================================================================
+
+    def _create_menus(self):
+        """create all the menus and submenus"""
         # Add a main menubar
         mainMenu = self.menuBar()
 
@@ -174,18 +197,6 @@ class MyMainWindow(MainWindow):
         # Allow adding our plot
         self.add_menu_item(helpMenu, self.help_commands_action)
 
-        #---------- Load our main plot and show the application ----------
-        pvt.set_plotter_parameters(self.plotter,reset_cam_orientation=True)
-        self.load_main_plot()
-
-        # Show the application window
-        if show:
-            self.show()
-
-    #==========================================================================
-    #/////////////////////-- Essential Setup Methods --////////////////////////
-    #==========================================================================
-
     def _create_actions(self):
         """create all the actions we will use"""
         # File Actions
@@ -229,6 +240,30 @@ class MyMainWindow(MainWindow):
     #=================================================================
     #/////////////////////-- Helper methods --////////////////////////
     #=================================================================
+
+    def create_vbox_slider(self,label_text:str='N: '):
+        """create a vbox layout with a slider and label"""
+        vlayout = QtWidgets.QVBoxLayout()
+
+        slider_label = QtWidgets.QLabel()
+
+        vlayout.addWidget(slider_label)
+
+        slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        slider.setMaximumSize(100,20)
+        slider.setRange(0,10)
+        slider.setSingleStep(1)
+        slider.setTickInterval(1)
+        slider.setValue(int(self.main_plot.scalar_threshold*10))
+        slider.setTickPosition(QtWidgets.QSlider.TicksBelow)        
+        slider.valueChanged.connect(self.change_scalar_threshold_slider)
+    
+        vlayout.addWidget(slider)
+
+        slider_label.setText(f'{label_text}{slider.value()}')
+
+        return vlayout
+
 
     def add_menu_item(self,menu,action):
         """add a menu item/add an action"""
@@ -307,12 +342,10 @@ class MyMainWindow(MainWindow):
         """load our main plot to the pyqt frame"""
         # Clear the screen
         self.plotter.clear()
-
-        if new_scalars:
-            self.main_plot.load_points()
-            
-        self.main_plot.load_scalars()
-
+        
+        # Get the points and scalars from the json file
+        self.main_plot.points, self.main_plot.scalars = pvt.get_frame_ps_json(file_path=self.main_plot.json_filepath, scalar_threshold=self.main_plot.scalar_threshold)
+    
         # Add the points to the plot
         pvt.add_plotter_points(self.plotter,self.main_plot.points,self.main_plot.scalars)
 
@@ -325,30 +358,31 @@ class MyMainWindow(MainWindow):
         # Reset the camera
         self.plotter.reset_camera()
         
-
-    def change_num_neighbors_spin(self, _=False): # Dont remove _=False. An action always return False
-        """change the number of neighbors in our main plot with the spinbox"""
+    # WIP
+    def change_scalar_threshold_spin(self, _=False): # Dont remove _=False. An action always return False
+        """change the scalar threshold in our main plot with the spinbox"""
         # getting current value
-        value = self.spinbox.value()
+        value = self.sender().value()
 
-        self.result_label.setText(f'N: {value}')
+        #self.result_label.setText(f'N: {value}')
 
-        self.main_plot.set_num_neighbors(value)
+        self.main_plot.set_scalar_threshold(value/10)
         # setting value of spin box to the label
         self.load_main_plot(new_scalars=False)
 
-    def change_num_neighbors_slider(self, _=False): # Dont remove _=False. An action always return False
-        """change the number of neighbors in our main plot with the slider"""
+    # WIP
+    def change_scalar_threshold_slider(self, _=False): # Dont remove _=False. An action always return False
+        """change the scalar threshold in our main plot with the slider"""
         # getting current value
-        value = self.slider.value()
+        value = self.sender().value()
 
-        self.result_label.setText(f'N: {value}')
+        print(self.sender().value()/10)
+        #TODO
+        #self.sender().parent().findChild(QtWidgets.QSlider, "slider").setText(f'N: {value}')
 
-        self.main_plot.set_num_neighbors(value)
+        self.main_plot.set_scalar_threshold(value/10)
         # setting value of spin box to the label
         self.load_main_plot(new_scalars=False)
-
-
 
 
 def run_application():
