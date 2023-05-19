@@ -162,6 +162,7 @@ cython_debug/
 # Avoid adding test images from clutter_experiments.
 other/visual_clutter_experiments/*.jpg
 other/visual_clutter_experiments/*.png
-
-
+*.json
+*.jpg
+*.png
 ComplexityToolkit/Utils/test_project_export_2023-05-17_13-19-26.json

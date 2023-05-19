@@ -31,9 +31,6 @@ def parseJsonData(data):
 
     return parsedData
 
-        
-
-
 
 if __name__ == "__main__":
     parsedData = parseJsonData(readJson("test_project_export_2023-05-17_13-19-26.json"))
