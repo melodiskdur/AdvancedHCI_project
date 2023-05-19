@@ -11,6 +11,8 @@ class VCFrameAnalyzer():
         self.vc_settings: dict
         self.frame_clutter: dict = dict()
         self.string_path: str = ""
+        self.feature_congestion_on: bool = True
+        self.subband_entropy_on: bool = True
 
         if input_image:
             self.load_image(input_image=input_image)
@@ -32,11 +34,16 @@ class VCFrameAnalyzer():
                 'subband_entropy: float',\n
                 'top': int,\n
                 'left' int,\n
-                'center_xy' (int, int),\n
+                'center_xy' (float, float),\n
                 'width': int,\n
                 'height': int},\n
                 }\n
         }
+
+        Notes
+        -----
+        if 'feature_congestion' or 'subband_entropy' has been toggled to False (i.e 'Off'), the corresponding dict field
+        value will be set to -1.
         '''
         # Segment the image.
         segments = FrameSegmenter.segment_frame(image=self.image, num_segments=self.num_segments)
@@ -44,7 +51,7 @@ class VCFrameAnalyzer():
         for key, val in segments.items():
             if verbose > 0:
                 print(f"Calculating clutter for {key}")
-            self.frame_clutter[key] = self._calculate_subframe_clutter(subframe_dict=val)
+            self.frame_clutter[str(key)] = self._calculate_subframe_clutter(subframe_dict=val)
         if verbose > 0:
             print("Clutter calculations done.")
 
@@ -54,10 +61,11 @@ class VCFrameAnalyzer():
         and (if it was loaded from a string path) the path to the original image.
         '''
         if not self.frame_clutter:
-            return {'image_width': None, 'image_height': None, 'clutter_data': None}
+            return {'image_width': None, 'image_height': None, 'clutter_data': None, 'file_path': ""}
         return {
             'image_width': self.image.size[0],
             'image_height': self.image.size[1],
+            'file_path': self.string_path,
             'clutter_data': self.frame_clutter
             }
 
@@ -67,7 +75,7 @@ class VCFrameAnalyzer():
         either a string path to an image file, or a PIL.Image object.
         '''
         if isinstance(input_image, str):
-            self.image = Image(input_image)
+            self.image = Image.open(input_image)
             self.string_path = input_image
         elif isinstance(input_image, Image.Image):
             self.image = input_image
@@ -85,6 +93,22 @@ class VCFrameAnalyzer():
         else:
             raise TypeError(f"VCFrameAnalyzer.set_num_segments(): 'num_segments' cannot \
                             be of type '{type(num_segments)}'. Allowed type is tuple(int,int).")
+
+    def toggle_feature_congestion(self, value: bool):
+        '''
+        Determines whether or not the Feature Congestion-type clutter should
+        be calculated. Default is True.
+        '''
+        if isinstance(value, bool):
+            self.feature_congestion_on = value
+
+    def toggle_subband_entropy(self, value: bool):
+        '''
+        Determines whether or not the Subband Entropy-type clutter should
+        be calculated. Default is True.
+        '''
+        if isinstance(value, bool):
+            self.subband_entropy_on = value
 
     def load_visual_clutter_settings(self, settings: dict):
         '''
@@ -118,8 +142,8 @@ class VCFrameAnalyzer():
                              contrast_filt_sigma=self.vc_settings['contrast_filt_sigma'],
                              contrast_pool_sigma=self.vc_settings['contrast_pool_sigma'],
                              color_pool_sigma=self.vc_settings['color_pool_sigma'])
-        segment_fc, _ = segment_vlc.getClutter_FC()
-        segment_se = segment_vlc.getClutter_SE()
+        segment_fc, _ = segment_vlc.getClutter_FC() if self.feature_congestion_on else (-1, -1)
+        segment_se = segment_vlc.getClutter_SE() if self.subband_entropy_on else -1
         return {'feature_congestion': segment_fc, 'subband_entropy': segment_se,
                 'top': subframe_dict['top'],
                 'left': subframe_dict['left'],
