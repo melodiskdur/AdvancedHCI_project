@@ -47,7 +47,8 @@ def create_3d_points(
         num_points_per_frame:int=100, 
         frame_dimensions:tuple[int,int]=(10,8), 
         num_frames:int=10, 
-        dist_between_frames:int=1,):
+        dist_between_frames:int=1
+        ):
     """
     Create all the points and their corresponding scalars
     Input:
@@ -80,12 +81,21 @@ def create_3d_points(
 
     return points
 
-def get_frame_ps_json(file_path,frame_number:float=0.0,scalar_type:str='feature_congestion',scalar_threshold:float=0.0):
+def get_frame_ps_json(
+        file_path,
+        frame_number:float=0.0,
+        scalar_type:str='feature_congestion',
+        scalar_threshold:float=0.0
+        ):
     """open and extract points and scalars from a data folder"""
 
-    # open the file and load the data
-    with open(file_path) as f:
-        data = json.load(f)
+    try:
+        # open the file and load the data
+        with open(file_path) as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        print("ERROR: file not found. Try entering a different path in the input field")
+        return np.array([]), np.array([])
     
     # Initialize the points and scalars lists
     points = []
@@ -96,6 +106,7 @@ def get_frame_ps_json(file_path,frame_number:float=0.0,scalar_type:str='feature_
         for val in data.values():
             
             # Append the point coordinates
+            # NOTE: the y-coordinate is negative to fit the data used
             points.append(np.array([float(val['center_xy'][0]),-float(val['center_xy'][1]),frame_number]))
 
             # Add the wanted scalar
@@ -105,7 +116,7 @@ def get_frame_ps_json(file_path,frame_number:float=0.0,scalar_type:str='feature_
                 scalars.append(val['subband_entropy'])
     
     # Scale the scalars to fit fully within [0,1]
-    scalars = force_within_range(scalars)
+    #scalars = force_within_range(scalars)
   
     # Set all the scalars that are below the threshold to 0
     scalars = apply_threshold(scalars,scalar_threshold)
@@ -116,11 +127,13 @@ def get_frame_ps_json(file_path,frame_number:float=0.0,scalar_type:str='feature_
 ###################################################
 #////////////////--- Rendering ---/////////////////
 
-def add_plotter_cube(plotter:pv.Plotter,
-                     cube_dims:tuple[int,int,int],
-                     color:str='white',
-                     style:str='wireframe',
-                     line_width:int=2):
+def add_plotter_cube(
+        plotter:pv.Plotter,
+        cube_dims:tuple[int,int,int],
+        color:str='white',
+        style:str='wireframe',
+        line_width:int=2
+        ):
     """
     Basically just the plotter.add_mesh() method, but with
     an easier to use interface were only the needed 
@@ -138,20 +151,25 @@ def add_plotter_cube(plotter:pv.Plotter,
     
     return actor
 
-def add_plotter_points(plotter:pv.Plotter,
-                       points,
-                       scalars,
-                       render_points_as_spheres:bool=True,
-                       style:str='points_gaussian',
-                       cmap=cmocean.cm.thermal,
-                       emissive:bool=False,
-                       rgba:bool=False,
-                       point_size:int=10):
+def add_plotter_points(
+        plotter:pv.Plotter,
+        points,
+        scalars,
+        render_points_as_spheres:bool=True,
+        style:str='points_gaussian',
+        cmap=cmocean.cm.thermal,
+        emissive:bool=False,
+        rgba:bool=False,
+        point_size:int=10
+        ):
     """
     Basically just the plotter.add_points() method, but with
     an easier to use interface were only the needed 
     parameters are inclueded
     """
+    if len(points) == 0:
+        return
+    
     actor = plotter.add_points(
         points,
         render_points_as_spheres=render_points_as_spheres,
