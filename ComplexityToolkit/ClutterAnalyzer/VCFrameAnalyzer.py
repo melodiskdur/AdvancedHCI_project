@@ -19,7 +19,7 @@ class VCFrameAnalyzer():
         self.set_num_segments(num_segments=num_segments)
         self.load_visual_clutter_settings(settings={'numlevels': 3, 'contrast_filt_sigma': 1, 'contrast_pool_sigma': None, 'color_pool_sigma': 3})
 
-    def calculate_clutter(self, retrieve_sub_image: bool = False, verbose=0):
+    def calculate_clutter(self, retrieve_sub_image: bool = False, verbose: int = 0):
         '''
         Calculates the Feature Congestion and Subband Entropy of the loaded
         frame image, using the functionality provided in the visual_clutter library.
@@ -55,19 +55,21 @@ class VCFrameAnalyzer():
         if verbose > 0:
             print("Clutter calculations done.")
 
-    def clutter_data_dict(self) -> dict:
+    def clutter_data_dict(self, verbose: int = 1) -> dict:
         '''
         Returns a dictionary with all the rows and cols as well as the original image size
         and (if it was loaded from a string path) the path to the original image.
+
+        Notes
+        ---
+        By default, 'verbose' is set to 1. This adds 'image_width' and 'image_height' to the
+        data dict. Set 'verbose' = 0 to remove those fields.
         '''
         if not self.frame_clutter:
             return {'image_width': None, 'image_height': None, 'clutter_data': None, 'file_path': ""}
-        return {
-            'image_width': self.image.size[0],
-            'image_height': self.image.size[1],
-            'file_path': self.string_path,
-            'clutter_data': self.frame_clutter
-            }
+        output = {'file_path': self.string_path, 'clutter_data': self.frame_clutter}
+        return {**output, 'image_width': self.image.size[0], 'image_height': self.image.size[1]} \
+                if verbose > 0 else output
 
     def load_image(self, input_image):
         '''
