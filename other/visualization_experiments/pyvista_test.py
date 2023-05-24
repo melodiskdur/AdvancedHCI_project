@@ -27,11 +27,11 @@ def create_nn_scalars(points:np.ndarray, num_neighbors, scalar_threshold=0.5):
     """
     if num_neighbors <= 0:
         num_neighbors = 1
-    
+
     # Compute the nearest neighbors for each point
     neighbors = NearestNeighbors(n_neighbors=num_neighbors).fit(points)
     distances, _ = neighbors.kneighbors(points)
-    
+
     # Calculate the scalars for the points based on the distances
     # Add a small value to prevent division by zero
     scalars = (1.0 / (distances.mean(axis=1) + 1e-10))
@@ -72,11 +72,11 @@ def create_3d_points(
 
         # Create points and add a specific z-value for each frame
         frame_points = np.array([np.array([x,y,-i*dist_between_frames]) for x,y in zip(x_values,y_values)])
-        
+
         # Append all the points created to points
         for p in frame_points:
             points.append(p)
-    
+
     # Change points to a numpy array for ease of use
     points = np.array(points)
 
@@ -159,7 +159,7 @@ def add_plotter_cube(
         ):
     """
     Basically just the plotter.add_mesh() method, but with
-    an easier to use interface were only the needed 
+    an easier to use interface were only the needed
     parameters are inclueded
     """
     actor = plotter.add_mesh(
@@ -167,11 +167,11 @@ def add_plotter_cube(
             center=(cube_dims[0]/2,-cube_dims[1]/2,-cube_dims[2]/2),
             x_length=cube_dims[0],
             y_length=cube_dims[1],
-            z_length=cube_dims[2]), 
-        color=color, 
-        style=style, 
+            z_length=cube_dims[2]),
+        color=color,
+        style=style,
         line_width=line_width)
-    
+
     return actor
 
 def add_plotter_points(
@@ -187,7 +187,7 @@ def add_plotter_points(
         ):
     """
     Basically just the plotter.add_points() method, but with
-    an easier to use interface were only the needed 
+    an easier to use interface were only the needed
     parameters are inclueded
     """
     if len(points) == 0:
@@ -209,7 +209,7 @@ def add_plotter_points(
         point_size=point_size,
         show_scalar_bar=True,
         scalar_bar_args= {'label_font_size':10,'outline':False})
-    
+
     return actor
 
 
@@ -221,7 +221,7 @@ def set_plotter_parameters(
         cam_rotation:tuple[int,int,int]=(45,15,0),
         add_axes:bool=True,
         reset_cam_orientation:bool=False
-        ): 
+        ):
     """
     Sets some stuff. Need to be improved.
     """
@@ -230,18 +230,18 @@ def set_plotter_parameters(
 
     # Add some text to the plot
     plotter.add_text('AdvancedHCI_project',font_size=6, color='w')
-    
+
     if reset_cam_orientation:
 
         # Set the default camera view position and orientation
-        plotter.camera_position = cam_pos 
+        plotter.camera_position = cam_pos
 
         # Set a default initial camera rotation
         plotter.camera.azimuth = cam_rotation[0]
         plotter.camera.elevation = cam_rotation[1]
         plotter.camera.roll = cam_rotation[2]
 
-    # Set an intial camera zoom 
+    # Set an intial camera zoom
     plotter.camera.zoom(cam_zoom)
 
     # Add the xyz-axes visible in the lower left
@@ -257,7 +257,7 @@ def test_main():
     #-------------------
     # Plotting parameters
     num_points_per_frame = 20
-    frame_dimensions = (1024,768) 
+    frame_dimensions = (1024,768)
     num_frames = 50
     dist_between_frames = 50
     num_neighbors = 4
@@ -271,10 +271,10 @@ def test_main():
         frame_dimensions=frame_dimensions,
         num_frames=num_frames,
         dist_between_frames=dist_between_frames)
-    
+
     # Create all the scalars for each point
     scalars = create_nn_scalars(
-        points, 
+        points,
         num_neighbors=num_neighbors,
         scalar_threshold=scalar_threshold)
 
@@ -288,20 +288,20 @@ def test_main():
 
     # Add a cube around the points to the plot
     add_plotter_cube(plotter,(frame_dimensions[0],frame_dimensions[1],num_frames*dist_between_frames))
-    
+
     # NOTE: set parameters after adding everything to the plotter
     set_plotter_parameters(plotter,reset_cam_orientation=True)
-    
+
     # Display everything added to the plot
     plotter.show()
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     test_main()
 
-    
 
-    
-    
+
+
+
 
 
 
