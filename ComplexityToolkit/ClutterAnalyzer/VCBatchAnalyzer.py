@@ -87,7 +87,6 @@ class VCBatchAnalyzer():
         with open(self.output_file_path, "w") as f:
             f.write(init_json)
 
-
     def _load_VCFrameAnalyzer_objects(self, suffix: str = '.jpg'):
         file_paths = DirectoryParser.parse_directory(self.folder_path, suffix=suffix)
         ordered_files = DirectoryParser.order_parsed_files(file_paths=file_paths)
