@@ -3,6 +3,8 @@ import json
 # CONSTANTS.
 _SCALABEL_FRAME_FIELDS = {'name', 'url', 'videoName', 'timestamp', 'attributes', 'labels', 'sensor'}
 _SCALABEL_LABELS_FIELDS = {'id', 'category', 'attributes', 'manualShape', 'box2d', 'poly2d', 'box3d'}
+_URL_TOKEN_STANDARD_WEB = "https://s3-us-west-2.amazonaws.com/scalabel-public/demo/frames/"
+_URL_TOKEN_STANDARD_LOCAL = "http://localhost:8686/items/"
 
 
 def select_parsed_data_by_category(parsed_data: dict, category: str) -> dict:
@@ -47,16 +49,26 @@ def checkURL(url,token):
     return url
 
 
-def parse_scalabel_json_data(data, url_token: str):
+def parse_scalabel_json_data(data, url_token: str = _URL_TOKEN_STANDARD_LOCAL):
     if not data:
         return
 
     parsedData = dict()
     for frame_data in data['frames']:
         for i in range(len(frame_data['labels'])):
-            del frame_data['labels'][i]['manualShape']
-            del frame_data['labels'][i]['poly2d']
-            del frame_data['labels'][i]['box3d']
+            try:
+                del frame_data['labels'][i]['manualShape']
+            except:
+                print("frame_data['labels'][",i,"]['manualShape'] Dosen't exist")
+            try:   
+                del frame_data['labels'][i]['poly2d']
+            except:
+                print("frame_data['labels'][",i,"]['poly2d'] Dosen't exist")
+            try:
+                del frame_data['labels'][i]['box3d']
+            except:
+                print("frame_data['labels'][",i,"]['box3d'] Dosen't exist")
+                
         frame_data['url'] = checkURL(url=frame_data['url'], token=url_token)
         parsedData[frame_data['url']] = frame_data['labels']
 
@@ -64,5 +76,5 @@ def parse_scalabel_json_data(data, url_token: str):
 
 
 if __name__ == "__main__":
-    parsedData = parse_scalabel_json_data(read_json("test_project_export_2023-05-17_13-19-26.json"))
-    print(parsedData)
+    parsedData = parse_scalabel_json_data(read_json("Ibiza_Original.json"),_URL_TOKEN_STANDARD_WEB )
+    #print(parsedData)
