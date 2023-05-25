@@ -8,7 +8,7 @@ LABEL_CONFIG_STANDARD_V1 = {"attributes": [{"name": "Occluded", "type": "switch"
                                         {"name": "InMotion", "type": "switch", "tag": "M"}, 
                                         {"name": "Speed", "type": "list", "tag": "spd", "values": ["Slow", "Moderate", "Fast", "VeryFast"], "tagPrefix": "", "tagSuffixes": ["S", "M", "F", "V"]}, 
                                         {"name": "Direction", "type": "list", "tag": "dir", "values": ["UL", "U", "UR", "L", "NA", "R", "DL", "D", "DR"], "tagPrefix": "", "tagSuffixes": ["UL", "U", "UR", "L", "NA", "R", "DL", "D", "DR"]}], 
-                                        "categories": [{"name": "veichle"}, {"name": "pedestrian"}]}
+                                        "categories": [{"name": "vehicle"}, {"name": "pedestrian"}]}
 
 VEHICLES = ["car","bus","truck", "train", "trailer", "other vehicle", "motorcycle", "bicycle"]
 PEDESTRIANS = ["pedestrian", "other person"]
