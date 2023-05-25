@@ -2,6 +2,7 @@ import numpy as np
 import pyvista as pv
 from sklearn.neighbors import NearestNeighbors
 import cmocean
+import copy
 import json
 
 #################################################
@@ -44,10 +45,11 @@ def create_nn_scalars(points:np.ndarray, num_neighbors, scalar_threshold=0.5):
     return np.array(scalars)
 
 def create_3d_points(
-        num_points_per_frame:int=100,
-        frame_dimensions:tuple[int,int]=(10,8),
-        num_frames:int=10,
-        dist_between_frames:int=1,):
+        num_points_per_frame:int=100, 
+        frame_dimensions:tuple[int,int]=(10,8), 
+        num_frames:int=10, 
+        dist_between_frames:int=1
+        ):
     """
     Create all the points and their corresponding scalars
     Input:
@@ -80,47 +82,81 @@ def create_3d_points(
 
     return points
 
-def get_frame_ps_json(file_path,frame_number:float=0.0,scalar_type:str='feature_congestion',scalar_threshold:float=0.0):
-    """open and extract points and scalars from a data folder"""
+def get_video_data(
+        file_path,
+        scalar_type:str='feature_congestion',
+        scalar_threshold:float=0.0,
+        dist_between_frames=1
+        ):
+    """open and extract points,scalars etc from a data folder"""
 
-    # open the file and load the data
-    with open(file_path) as f:
-        data = json.load(f)
+    try:
+        # open the file and load the data
+        with open(file_path) as f:
+            payload = json.load(f)
+    except FileNotFoundError:
+        print("ERROR: file not found. Try entering a different path in the input field")
+        return np.array([]), np.array([])
     
     # Initialize the points and scalars lists
     points = []
     scalars = []
 
-    # Loop all values in the obtained data
-    if isinstance(data,dict):
-        for val in data.values():
-            
-            # Append the point coordinates
-            points.append(np.array([float(val['center_xy'][0]),-float(val['center_xy'][1]),frame_number]))
+    params = copy.deepcopy(payload)
 
-            # Add the wanted scalar
-            if scalar_type == 'feature_congestion':
-                scalars.append(val['feature_congestion'])
-            elif scalar_type == 'subband_entropy':
-                scalars.append(val['subband_entropy'])
-    
+    # Loop all values in the obtained data
+    if isinstance(payload,dict):
+        
+        params.pop('data')
+
+        for i, frame in enumerate(payload['data'].values()):    
+
+            for val in frame['clutter_data'].values():
+
+                # Append the point coordinates
+                points.append(np.array([float(val['center_xy'][0]),-float(val['center_xy'][1]),-i*dist_between_frames]))
+
+                # Add the wanted scalar
+                if scalar_type == 'feature_congestion':
+                    scalars.append(val['feature_congestion'])
+
+                elif scalar_type == 'subband_entropy':
+                    scalars.append(val['subband_entropy'])
+   
     # Scale the scalars to fit fully within [0,1]
-    scalars = force_within_range(scalars)
+    #scalars = force_within_range(scalars)
   
     # Set all the scalars that are below the threshold to 0
-    scalars = apply_threshold(scalars,scalar_threshold)
+    scalars = apply_threshold(scalars, scalar_threshold)
 
-    return np.array(points), np.array(scalars)
+    # Remove all points with scalars set to 0
+    # TODO: fix this. Just a quick implementation
+    indexes_to_remove = []
+    for i, s in enumerate(scalars):
+        if s == 0:
+            indexes_to_remove.append(i)
+
+    """if len(indexes_to_remove) != 0:
+        indexes_to_remove.pop(0)"""
+    
+    for index in sorted(indexes_to_remove, reverse=True):
+        del points[index]    
+        del scalars[index]  
+
+
+    return np.array(points), np.array(scalars), params 
 
 
 ###################################################
 #////////////////--- Rendering ---/////////////////
 
-def add_plotter_cube(plotter:pv.Plotter,
-                     cube_dims:tuple[int,int,int],
-                     color:str='white',
-                     style:str='wireframe',
-                     line_width:int=2):
+def add_plotter_cube(
+        plotter:pv.Plotter,
+        cube_dims:tuple[int,int,int],
+        color:str='white',
+        style:str='wireframe',
+        line_width:int=2
+        ):
     """
     Basically just the plotter.add_mesh() method, but with
     an easier to use interface were only the needed
@@ -138,20 +174,30 @@ def add_plotter_cube(plotter:pv.Plotter,
 
     return actor
 
-def add_plotter_points(plotter:pv.Plotter,
-                       points,
-                       scalars,
-                       render_points_as_spheres:bool=True,
-                       style:str='points_gaussian',
-                       cmap=cmocean.cm.thermal,
-                       emissive:bool=False,
-                       rgba:bool=False,
-                       point_size:int=10):
+def add_plotter_points(
+        plotter:pv.Plotter,
+        points,
+        scalars,
+        render_points_as_spheres:bool=True,
+        style:str='points_gaussian',
+        cmap=cmocean.cm.thermal,
+        emissive:bool=False,
+        rgba:bool=False,
+        point_size:int=10
+        ):
     """
     Basically just the plotter.add_points() method, but with
     an easier to use interface were only the needed
     parameters are inclueded
     """
+    if len(points) == 0:
+        return
+    """
+    cloud = pv.PolyData(points)
+    surf = cloud.delaunay_2d()
+    actor = plotter.add_mesh(surf, color=True, show_edges=True)
+    """
+
     actor = plotter.add_points(
         points,
         render_points_as_spheres=render_points_as_spheres,
@@ -169,7 +215,7 @@ def add_plotter_points(plotter:pv.Plotter,
 
 def set_plotter_parameters(
         plotter:pv.Plotter,
-        bg_color:str='k',
+        bg_color:str='#000000',
         cam_pos:str='xy',
         cam_zoom=1.0,
         cam_rotation:tuple[int,int,int]=(45,15,0),
@@ -180,7 +226,7 @@ def set_plotter_parameters(
     Sets some stuff. Need to be improved.
     """
     # Set a background color
-    plotter.background_color = bg_color
+    plotter.set_background(bg_color, top='#2c2438')
 
     # Add some text to the plot
     plotter.add_text('AdvancedHCI_project',font_size=6, color='w')

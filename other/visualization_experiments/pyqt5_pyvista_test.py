@@ -4,13 +4,19 @@ import sys
 import os
 os.environ["QT_API"] = "pyqt5"
 
-from qtpy import QtWidgets, QtCore, QtGui # pip install pyqt5-tools
+from qtpy import QtWidgets, QtCore, QtGui
+
+# pip install pyqt5-tools
+# python -m pip install PyQt5
 
 import numpy as np
+import math
+import copy
 
 import pyvista as pv
 from pyvistaqt import QtInteractor, MainWindow
 import pyvista_test as pvt
+import cmocean
 
 class MainPlot():
     """
@@ -21,20 +27,41 @@ class MainPlot():
     def __init__(self):
         # Create the frame
         self.frame = QtWidgets.QFrame()
+        
+        #-----------
+        self.dist_between_frames = 100
+        self.point_size = 10
+        self.scalar_threshold = 0
 
-        # Intialize the data points and scalars
-        self.points = None
-        self.scalars = None
-        # TODO: specify folder instead of a single file (or add both options)
-        self.json_filepath = 'H:/Kursmaterial/AdvancedHCI/test_frame_10x20.json'
-        self.points, self.scalars = pvt.get_frame_ps_json(file_path=self.json_filepath, scalar_threshold=self.scalar_threshold)
+        #-----------
+        self.wireframe = False
+        self.gaussian_points = True
+        self.emissive_points = False
+        self.render_points_as_spheres = True
+        
+        #-----------
+        self.json_filepath = 'H:/Kursmaterial/AdvancedHCI/tokyo_15frames.json'
 
-        # Essential parameters
-        self.frame_dimensions = (1280,720)
-        self.num_frames = 1
-        self.dist_between_frames = 0
-        self.scalar_threshold = 0.8
-
+        #-----------
+        self.points, self.scalars, params = pvt.get_video_data(
+            file_path=self.json_filepath, 
+            scalar_threshold=self.scalar_threshold,
+            dist_between_frames=self.dist_between_frames)
+        
+        #-----------
+        self.frame_dimensions = (params['image_width'],params['image_height'])
+        self.num_frames = params['number_of_frames']
+        self.dimensions = params['dimensions']
+        self.folder_name = params['folder_name']
+        
+        #----------- 
+        if len(self.scalars) != 0:
+            self.scalar_range = (min(list(self.scalars)),max(list(self.scalars)))
+            #self.scalar_threshold = min(list(self.scalars))
+        else:
+            self.scalar_range = (0,1)
+            
+        
         #--------- TEST ---------
         # Test parameters
         self.num_points_per_frame = 1
@@ -44,6 +71,24 @@ class MainPlot():
         #self.load_points()
         #self.load_scalars()
         #------------------------
+    
+    def set_filepath(self,path:str):
+        self.json_filepath = path
+    
+    def set_render_points_as_spheres(self,s:bool):
+        self.render_points_as_spheres = s
+    
+    def set_wireframe(self, s:bool):
+        self.wireframe = s
+    
+    def set_gaussian_points(self, s:bool):
+        self.gaussian_points = s
+        
+    def set_emissive_points(self, s:bool):
+        self.emissive_points = s
+    
+    def set_point_size(self,size:int):
+        self.point_size = size
     
     def set_num_points_per_frame(self,val):
         if val < 0: val = 0
@@ -58,17 +103,17 @@ class MainPlot():
         self.num_frames = val
     
     def set_dist_between_frames(self,val):
-        if val <= 0: val = 1
+        if val < 0: val = 0
         self.dist_between_frames = val
 
     def set_num_neighbors(self,val:int):
         if val <= 0: val = 1
         self.num_neighbors = val
     
-    def set_scalar_threshold(self,val):
-        if val < 0: val = 0
-        elif val > 1: val = 1
-        self.scalar_threshold = val
+    def set_scalar_threshold(self,sc):
+        if sc < math.floor(self.scalar_range[0]): sc = 0
+        elif sc > math.ceil(self.scalar_range[1]): sc = 1
+        self.scalar_threshold = sc
 
     def load_points(self):
         self.points = pvt.create_3d_points(  
@@ -118,18 +163,106 @@ class MyMainWindow(MainWindow):
         self._create_toolbars()     # Movable objects containing widgets
 
         self._create_statusbar()    # Displays helpful messages
+        
+        #---------- Create the parameter field and add some sliders/spinboxes/checkboxes ----------
+        
+        # Parameter layout
+        param_vlayout = QtWidgets.QVBoxLayout()
+        param_vlayout.setAlignment((QtCore.Qt.AlignTop))
+        
+        #---------------
+        # Sliders
+        scalar_threshold_vbox_slider = self.create_vbox_slider(
+            range=(math.floor(self.main_plot.scalar_range[0]),math.ceil(self.main_plot.scalar_range[1])),
+            init_value=int(self.main_plot.scalar_threshold),
+            label_text='Scalar Threshold: ',
+            set_method=self.main_plot.set_scalar_threshold)
+        
+        num_frames_vbox_slider = self.create_vbox_slider(
+            range=(1,self.main_plot.num_frames),
+            init_value=self.main_plot.num_frames,
+            label_text='Num Frames: ',
+            set_method=self.main_plot.set_num_frames)
+        
+        dist_between_frames_vbox_slider = self.create_vbox_slider(
+            range=(0,100),
+            init_value=int(self.main_plot.dist_between_frames),
+            tick_interval=10,
+            label_text='Dist Frames: ',
+            set_method=self.main_plot.set_dist_between_frames)
+        
+        point_size_vbox_slider = self.create_vbox_slider(
+            range=(0,80),
+            init_value=int(self.main_plot.point_size),
+            tick_interval=5,
+            label_text='Point Size: ',
+            set_method=self.main_plot.set_point_size)
+        
+        #---------------
+        # Checkboxes
+        wireframe_cb = self.create_checkbox(
+            title="Wireframe",
+            status=self.main_plot.wireframe,
+            change_method=self.checkbox_state)
+        
+        gaussian_points_cb = self.create_checkbox(
+            title = "Gaussian",
+            status=self.main_plot.gaussian_points,
+            change_method=self.checkbox_state)
+        
+        emissive_points_cb = self.create_checkbox(
+            title = "Emissive",
+            status=self.main_plot.emissive_points,
+            change_method=self.checkbox_state)
+        
+        sphere_points_cb = self.create_checkbox(
+            title = "Spherical",
+            status=self.main_plot.render_points_as_spheres,
+            change_method=self.checkbox_state)
+        
+        # Add the checkboxes to their own layout    
+        cb_vlayout = QtWidgets.QVBoxLayout()
+        cb_vlayout.addWidget(wireframe_cb)
+        cb_vlayout.addWidget(gaussian_points_cb)
+        cb_vlayout.addWidget(emissive_points_cb)
+        cb_vlayout.addWidget(sphere_points_cb)
+        cb_vlayout.addWidget(self.create_line_separator())
+        
+        #---------------
+        # Input field 
+        inputfield_vbox = self.create_input_field(
+            name='Filepath',
+            max_size=(110,30),
+            init_text=self.main_plot.json_filepath,
+            btn_text='Load',
+            btn_width=40)
+        
+        #---------------
+        # TODO: continue on this. Selection for color_map
+        combobox1 = QtWidgets.QComboBox()
+        combobox1.addItem('One')
+        combobox1.addItem('Two')
+        combobox1.addItem('Three')
+        combobox1.addItem('Four')
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(combobox1)
+        layout.addWidget(self.create_line_separator())
 
-        vlayout = QtWidgets.QVBoxLayout()
-        hlayout.addLayout(vlayout)
+        #---------------
+        # Add everything to the parameter layout
+        param_vlayout.addLayout(inputfield_vbox)
+        param_vlayout.addLayout(scalar_threshold_vbox_slider)
+        param_vlayout.addLayout(num_frames_vbox_slider)
+        param_vlayout.addLayout(dist_between_frames_vbox_slider)
+        param_vlayout.addLayout(point_size_vbox_slider)
+        param_vlayout.addLayout(cb_vlayout)
+        param_vlayout.addLayout(layout)
 
-        vbox_slider = self.create_vbox_slider('test: ')
 
-        vlayout.addLayout(vbox_slider)
-
-        vbox_slider2 = self.create_vbox_slider('test: ')
-
-        vlayout.addLayout(vbox_slider2)
-
+        
+        
+        # Add the parameter layout to the main layout
+        hlayout.addLayout(param_vlayout,0)
 
         """self.spinbox = QtWidgets.QSpinBox()
         self.spinbox.setValue(self.main_plot.scalar_threshold)
@@ -148,7 +281,7 @@ class MyMainWindow(MainWindow):
     #==========================================================================
     #/////////////////////-- Essential Setup Methods --////////////////////////
     #==========================================================================
-
+            
     def _create_menus(self):
         """create all the menus and submenus"""
         # Add a main menubar
@@ -235,41 +368,136 @@ class MyMainWindow(MainWindow):
         """create the statusbar"""
         self.statusbar = QtWidgets.QStatusBar()
         self.setStatusBar(self.statusbar)
-        self.statusbar.showMessage("Hello there", 3000)
+
+        self.statusbar.showMessage("Loading...", 3000) # Just for fun, not neccessary
 
     #=================================================================
     #/////////////////////-- Helper methods --////////////////////////
     #=================================================================
 
-    def create_vbox_slider(self,label_text:str='N: '):
+    def create_input_field(
+            self,
+            name='INPUT',
+            max_size=None,
+            init_text='',
+            btn_text='BTN',
+            btn_width=None,
+            add_line_separator:bool=True):
+        
+        # Create the main layout for all widgets in the inputfield
+        main_vbox = QtWidgets.QVBoxLayout()
+        main_vbox.setAlignment((QtCore.Qt.AlignTop))
+
+        # Create a label for the input field
+        lbl = QtWidgets.QLabel()
+        lbl.setText(name)
+        
+        # Create a horiszontal layout for the inputfield and its button
+        hbox = QtWidgets.QHBoxLayout()
+
+        # Create the inputfield
+        inputfield = QtWidgets.QLineEdit()
+        inputfield.setMaximumSize(max_size[0],max_size[1])
+        inputfield.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed,
+                                                 QtWidgets.QSizePolicy.Fixed))
+        inputfield.setText(init_text)
+
+        # Create the button
+        btn = self.create_button(lambda: self.change_filepath(inputfield),btn_text)
+        btn.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed,
+                                                 QtWidgets.QSizePolicy.Fixed))
+        
+        btn.setFixedWidth(btn_width)
+
+        # Add the inputfield and button to the horizontal layout
+        hbox.addWidget(inputfield)
+        hbox.addWidget(btn)
+        
+        # Add the label and the howizontal layout to the main layout
+        main_vbox.addWidget(lbl)
+        main_vbox.addLayout(hbox)
+
+        # Add a line_separator at the end
+        if add_line_separator:
+            sep_line = self.create_line_separator()
+            main_vbox.addWidget(sep_line)
+
+        return main_vbox
+
+    def create_vbox_slider(
+            self,
+            range:tuple[int,int]=(0,10), 
+            init_value:int=0, 
+            tick_interval:int=1, 
+            label_text:str='N: ',
+            slider_size:tuple[int,int]=(150,30),
+            set_method=None,
+            add_line_separator:bool=True):
         """create a vbox layout with a slider and label"""
+        
+        # Create the vertical box layout
         vlayout = QtWidgets.QVBoxLayout()
+        vlayout.setAlignment(QtCore.Qt.AlignTop)
 
+        # Create the slide label
         slider_label = QtWidgets.QLabel()
-
-        vlayout.addWidget(slider_label)
-
+        slider_label.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed,
+                                                 QtWidgets.QSizePolicy.Fixed))
+        slider_label.setText(f'{label_text}{init_value}')
+        
+        # Create the slider and connect it to its method
         slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-        slider.setMaximumSize(100,20)
-        slider.setRange(0,10)
+        slider.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed,
+                                                 QtWidgets.QSizePolicy.Fixed))
+        slider.setFixedSize(slider_size[0],slider_size[1])
+        slider.setRange(range[0],math.ceil(range[1]/tick_interval))
+        
         slider.setSingleStep(1)
-        slider.setTickInterval(1)
-        slider.setValue(int(self.main_plot.scalar_threshold*10))
-        slider.setTickPosition(QtWidgets.QSlider.TicksBelow)        
-        slider.valueChanged.connect(self.change_scalar_threshold_slider)
-    
-        vlayout.addWidget(slider)
+        slider.setTickInterval(1)    # Not the same as the input tick_interval
 
-        slider_label.setText(f'{label_text}{slider.value()}')
+        slider.setValue(math.ceil(init_value/tick_interval))
+        slider.setTickPosition(QtWidgets.QSlider.TicksBelow) 
 
+        if set_method != None:   
+            slider.valueChanged.connect(lambda: self.change_mainplot_param(set_method,tick_interval,slider_label,label_text))
+
+        # Add the widgets created to the layout
+        vlayout.addWidget(slider_label,0,alignment=QtCore.Qt.AlignTop)
+        vlayout.addWidget(slider,0,alignment=QtCore.Qt.AlignTop)
+
+        # Add a line_separator at the end
+        if add_line_separator:
+            sep_line = self.create_line_separator()
+            vlayout.addWidget(sep_line)
+        
         return vlayout
 
+    def create_line_separator(self,line_width:int=1,color:tuple[int,int,int]=(200, 200, 200)):
+        """create a line separator"""
+        sep_line = QtWidgets.QFrame()
+        sep_line.setFrameShape(QtWidgets.QFrame.HLine)
+        sep_line.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                                 QtWidgets.QSizePolicy.Fixed))
+        sep_line.setLineWidth(line_width)
+
+        pal = QtWidgets.QFrame().palette()
+        pal.setColor(QtGui.QPalette.WindowText, QtGui.QColor(color[0], color[1], color[2]))
+        sep_line.setPalette(pal)
+
+        return sep_line
 
     def add_menu_item(self,menu,action):
         """add a menu item/add an action"""
         menu.addAction(action)
     
-    def create_button(self,method,name:str='button'):
+    def create_checkbox(self, title:str='TITLENAME',status:bool=False,change_method=None):
+        """create a checkbox widget"""
+        cb = QtWidgets.QCheckBox(title)
+        cb.setChecked(status)
+        cb.stateChanged.connect(lambda: change_method(self.sender()))
+        return cb
+    
+    def create_button(self,method,name:str='BTN'):
         """create a button with a name and associated method"""
         btn = QtWidgets.QPushButton()
         btn.setText(name)
@@ -338,19 +566,31 @@ class MyMainWindow(MainWindow):
 
         self.plotter.reset_camera()
     
-    def load_main_plot(self, _=False, new_scalars = True): # Dont remove _=False. An action always return False
+    def load_main_plot(self, _=False): # Dont remove _=False. An action always return False
         """load our main plot to the pyqt frame"""
         # Clear the screen
         self.plotter.clear()
         
         # Get the points and scalars from the json file
-        self.main_plot.points, self.main_plot.scalars = pvt.get_frame_ps_json(file_path=self.main_plot.json_filepath, scalar_threshold=self.main_plot.scalar_threshold)
-    
-        # Add the points to the plot
-        pvt.add_plotter_points(self.plotter,self.main_plot.points,self.main_plot.scalars)
+        self.main_plot.points, self.main_plot.scalars, _ = pvt.get_video_data(
+            file_path=self.main_plot.json_filepath, 
+            scalar_threshold=self.main_plot.scalar_threshold,
+            dist_between_frames=self.main_plot.dist_between_frames)
 
-        # Add a cube around the points to the plot
-        pvt.add_plotter_cube(self.plotter,(self.main_plot.frame_dimensions[0],self.main_plot.frame_dimensions[1],self.main_plot.num_frames*self.main_plot.dist_between_frames))
+        # Add the points to the plot
+        pvt.add_plotter_points(
+            plotter=self.plotter, 
+            points=self.main_plot.points, 
+            scalars=self.main_plot.scalars, 
+            cmap=cmocean.cm.haline,
+            emissive=self.main_plot.emissive_points, 
+            style='points'+('_gaussian' if self.main_plot.gaussian_points else ''),
+            render_points_as_spheres=self.main_plot.render_points_as_spheres,
+            point_size=self.main_plot.point_size)
+        
+        if self.main_plot.wireframe:
+            # Add a cube around the points to the plot
+            pvt.add_plotter_cube(self.plotter,(self.main_plot.frame_dimensions[0],self.main_plot.frame_dimensions[1],(self.main_plot.num_frames - 1)*self.main_plot.dist_between_frames))
         
         # Set the plotter parameters (camera,background etc)
         pvt.set_plotter_parameters(self.plotter)
@@ -358,31 +598,49 @@ class MyMainWindow(MainWindow):
         # Reset the camera
         self.plotter.reset_camera()
         
-    # WIP
-    def change_scalar_threshold_spin(self, _=False): # Dont remove _=False. An action always return False
-        """change the scalar threshold in our main plot with the spinbox"""
-        # getting current value
-        value = self.sender().value()
+    def change_mainplot_param(self, set_method=None, value_scalar=1, label_widget:QtWidgets.QLabel=None, label_text:str=None): # Dont remove _=False. An action always return False
+        """change the some parameter in our main plot. Not filepath"""
+        # Get the current value
+        value = round(self.sender().value()*value_scalar,3)
 
-        #self.result_label.setText(f'N: {value}')
+        # Set the label if one is specified
+        if label_widget != None and label_text != None:
+            label_widget.setText(f'{label_text}{value}')
 
-        self.main_plot.set_scalar_threshold(value/10)
-        # setting value of spin box to the label
-        self.load_main_plot(new_scalars=False)
+        # Use the set method to change the parameter
+        set_method(value)
 
-    # WIP
-    def change_scalar_threshold_slider(self, _=False): # Dont remove _=False. An action always return False
-        """change the scalar threshold in our main plot with the slider"""
-        # getting current value
-        value = self.sender().value()
+        # Reload the main plot
+        self.load_main_plot()
+    
+    def change_filepath(self, inputfield:QtWidgets.QLineEdit):
+        """change the filepath in our main plot"""
+        # Set the filepath
+        self.main_plot.set_filepath(copy.copy(inputfield.text()))
 
-        print(self.sender().value()/10)
-        #TODO
-        #self.sender().parent().findChild(QtWidgets.QSlider, "slider").setText(f'N: {value}')
+        # Reload the main plot
+        self.load_main_plot()
 
-        self.main_plot.set_scalar_threshold(value/10)
-        # setting value of spin box to the label
-        self.load_main_plot(new_scalars=False)
+    # TODO: fix this. Too hardcoded
+    def checkbox_state(self, checkbox:QtWidgets.QCheckBox):
+        """change some mainplot parameters with checkboxes"""
+        status = checkbox.isChecked()
+        
+        if checkbox.text() == "Wireframe":
+            self.main_plot.set_wireframe(status)
+	
+        elif checkbox.text() == "Gaussian":
+            self.main_plot.set_gaussian_points(status)
+        
+        elif checkbox.text() == "Emissive":
+            self.main_plot.set_emissive_points(status)
+        
+        elif checkbox.text() == "Spherical":
+            self.main_plot.set_render_points_as_spheres(status)
+        
+        self.load_main_plot()
+        
+    
 
 
 def run_application():
