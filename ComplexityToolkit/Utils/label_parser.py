@@ -33,6 +33,7 @@ def select_attribute_by_state(attribute_data: dict, state: str) -> dict:
         state_data[frame] = frame_state_data
     return state_data
 
+
 def read_json(file_name):
     try:
         with open(file_name) as file:
@@ -60,7 +61,7 @@ def parse_scalabel_json_data(data, url_token: str = _URL_TOKEN_STANDARD_LOCAL):
                 del frame_data['labels'][i]['manualShape']
             except:
                 print("frame_data['labels'][",i,"]['manualShape'] Dosen't exist")
-            try:   
+            try:
                 del frame_data['labels'][i]['poly2d']
             except:
                 print("frame_data['labels'][",i,"]['poly2d'] Dosen't exist")
@@ -68,7 +69,7 @@ def parse_scalabel_json_data(data, url_token: str = _URL_TOKEN_STANDARD_LOCAL):
                 del frame_data['labels'][i]['box3d']
             except:
                 print("frame_data['labels'][",i,"]['box3d'] Dosen't exist")
-                
+
         frame_data['url'] = checkURL(url=frame_data['url'], token=url_token)
         parsedData[frame_data['url']] = frame_data['labels']
 

@@ -1,20 +1,18 @@
 import json
-import label_parser as parser
 
-#constants
-
-LABEL_CONFIG_STANDARD_V1 = {"attributes": [{"name": "Occluded", "type": "switch", "tag": "O"}, 
-                                        {"name": "Truncated", "type": "switch", "tag": "T"}, 
-                                        {"name": "InMotion", "type": "switch", "tag": "M"}, 
-                                        {"name": "Speed", "type": "list", "tag": "spd", "values": ["Slow", "Moderate", "Fast", "VeryFast"], "tagPrefix": "", "tagSuffixes": ["S", "M", "F", "V"]}, 
-                                        {"name": "Direction", "type": "list", "tag": "dir", "values": ["UL", "U", "UR", "L", "NA", "R", "DL", "D", "DR"], "tagPrefix": "", "tagSuffixes": ["UL", "U", "UR", "L", "NA", "R", "DL", "D", "DR"]}], 
+# CONSTANTS
+LABEL_CONFIG_STANDARD_V1 = {"attributes": [{"name": "Occluded", "type": "switch", "tag": "O"},
+                                        {"name": "Truncated", "type": "switch", "tag": "T"},
+                                        {"name": "InMotion", "type": "switch", "tag": "M"},
+                                        {"name": "Speed", "type": "list", "tag": "spd", "values": ["Slow", "Moderate", "Fast", "VeryFast"], "tagPrefix": "", "tagSuffixes": ["S", "M", "F", "V"]},
+                                        {"name": "Direction", "type": "list", "tag": "dir", "values": ["UL", "U", "UR", "L", "NA", "R", "DL", "D", "DR"], "tagPrefix": "", "tagSuffixes": ["UL", "U", "UR", "L", "NA", "R", "DL", "D", "DR"]}],
                                         "categories": [{"name": "vehicle"}, {"name": "pedestrian"}]}
 
 VEHICLES = ["car","bus","truck", "train", "trailer", "other vehicle", "motorcycle", "bicycle"]
 PEDESTRIANS = ["pedestrian", "other person"]
 OTHERS = ["trailer","dog", "rider", "traffic sign", "traffic light"]
 
-    
+
 # replace config to our standard config we are using
 def replace_config(data):
         data['config'] = LABEL_CONFIG_STANDARD_V1
@@ -23,15 +21,17 @@ def replace_config(data):
 # change the categories to our categories we have in our config. If set attributes to true also clean the attributes already on
 def change_categories_attributes(data,attributes = False):
     for i, frame_data in enumerate(data['frames']):
-        for i in range(len(frame_data['labels'])):
-            if frame_data['labels'][i]['category'] in VEHICLES:
-                frame_data['labels'][i]['category'] = "vehicle"
-            elif frame_data['labels'][i]['category'] in PEDESTRIANS:
-                frame_data['labels'][i]['category'] = "pedestrian"
+        indices_to_remove = []
+        for j in range(len(frame_data['labels'])):
+            if frame_data['labels'][j]['category'] in VEHICLES or "vehicle" in frame_data['labels'][j]['category']:
+                frame_data['labels'][j]['category'] = "vehicle"
+            elif frame_data['labels'][j]['category'] in PEDESTRIANS or "pedestrian" in frame_data['labels'][j]['category']:
+                frame_data['labels'][j]['category'] = "pedestrian"
             else:
-                del frame_data['labels'][i]
+                indices_to_remove.append(j)
             if attributes:
-                frame_data['labels'][i]['attributes'] = {}
+                frame_data['labels'][j]['attributes'] = {}
+        frame_data['labels'] = [frame_data['labels'][j] for j in range(len(frame_data['labels'])) if j not in indices_to_remove]
         data['frames'][i] = frame_data
 
     return data
@@ -40,8 +40,3 @@ def change_categories_attributes(data,attributes = False):
 def save_json(data,file_path):
      with open(file_path, 'w') as file:
         json.dump(data, file)
-
-
-if __name__ == "__main__":
-    data = replace_config(change_categories_attributes(parser.read_json("Ibiza_Original.json"),True))
-    save_json(data,"Ibiza_Original_Parsed.json")
