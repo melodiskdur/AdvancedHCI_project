@@ -7,12 +7,12 @@ _URL_TOKEN_STANDARD_WEB = "https://s3-us-west-2.amazonaws.com/scalabel-public/de
 _URL_TOKEN_STANDARD_LOCAL = "http://localhost:8686/items/"
 
 
-def select_parsed_data_by_category(parsed_data: dict, category: str) -> dict:
-    category_data = dict()
-    for frame, data in parsed_data.items():
+def select_parsed_data_by_category(parsed_data: list, category: str) -> list:
+    category_data = list()
+    for data in parsed_data:
         frame_category_data = [{ 'id': obj['id'], 'category': obj['category'], 'attributes': obj['attributes'], 'box2d': obj['box2d']}
-                               for obj in data if obj['category'] == category]
-        category_data[frame] = frame_category_data
+                               for obj in data['labels'] if obj['category'] == category]
+        category_data.append({'labels' : frame_category_data, 'url': data['url']})
     return category_data
 
 
@@ -54,7 +54,7 @@ def parse_scalabel_json_data(data, url_token: str = _URL_TOKEN_STANDARD_LOCAL):
     if not data:
         return
 
-    parsedData = dict()
+    parsedData = {'frames': []}
     for frame_data in data['frames']:
         for i in range(len(frame_data['labels'])):
             try:
@@ -71,11 +71,6 @@ def parse_scalabel_json_data(data, url_token: str = _URL_TOKEN_STANDARD_LOCAL):
                 print("frame_data['labels'][",i,"]['box3d'] Dosen't exist")
 
         frame_data['url'] = checkURL(url=frame_data['url'], token=url_token)
-        parsedData[frame_data['url']] = frame_data['labels']
+        parsedData['frames'].append({'labels': frame_data['labels'], 'url': frame_data['url']})
 
     return parsedData
-
-
-if __name__ == "__main__":
-    parsedData = parse_scalabel_json_data(read_json("Ibiza_Original.json"),_URL_TOKEN_STANDARD_WEB )
-    #print(parsedData)

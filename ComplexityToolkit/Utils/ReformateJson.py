@@ -10,7 +10,7 @@ LABEL_CONFIG_STANDARD_V1 = {"attributes": [{"name": "Occluded", "type": "switch"
 
 VEHICLES = ["car","bus","truck", "train", "trailer", "other vehicle", "motorcycle", "bicycle"]
 PEDESTRIANS = ["pedestrian", "other person"]
-OTHERS = ["trailer","dog", "rider", "traffic sign", "traffic light"]
+OTHERS = ["dog", "rider", "traffic sign", "traffic light"]
 
 
 # replace config to our standard config we are using
