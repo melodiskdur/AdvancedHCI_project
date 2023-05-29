@@ -42,6 +42,12 @@ def read_json(file_name):
     except FileNotFoundError as e:
         print(f"label_parser.read_json(): Couldn't read the file '{file_name}'")
         return None
+    
+
+#save to a json file
+def save_json(data,file_path):
+     with open(file_path, 'w') as file:
+        json.dump(data, file)
 
 
 def checkURL(url,token):
