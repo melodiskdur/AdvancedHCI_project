@@ -15,7 +15,7 @@ import copy
 
 import pyvista as pv
 from pyvistaqt import QtInteractor, MainWindow
-import pyvista_test as pvt
+import PyvistaWrapper as pvw
 import cmocean
 
 class MainPlot():
@@ -43,7 +43,7 @@ class MainPlot():
         self.json_filepath = 'H:/Kursmaterial/AdvancedHCI/tokyo_15frames.json'
 
         #-----------
-        self.points, self.scalars, params = pvt.get_video_data(
+        self.points, self.scalars, params = pvw.get_video_data(
             file_path=self.json_filepath, 
             scalar_threshold=self.scalar_threshold,
             dist_between_frames=self.dist_between_frames)
@@ -116,14 +116,14 @@ class MainPlot():
         self.scalar_threshold = sc
 
     def load_points(self):
-        self.points = pvt.create_3d_points(  
+        self.points = pvw.create_3d_points(  
             num_points_per_frame=self.num_points_per_frame,
             frame_dimensions=self.frame_dimensions,
             num_frames=self.num_frames,
             dist_between_frames=self.dist_between_frames)
         
     def load_scalars(self):    
-        self.scalars = pvt.create_nn_scalars(
+        self.scalars = pvw.create_nn_scalars(
             self.points, 
             self.num_neighbors,
             self.scalar_threshold)
@@ -258,9 +258,6 @@ class MyMainWindow(MainWindow):
         param_vlayout.addLayout(cb_vlayout)
         param_vlayout.addLayout(layout)
 
-
-        
-        
         # Add the parameter layout to the main layout
         hlayout.addLayout(param_vlayout,0)
 
@@ -271,7 +268,7 @@ class MyMainWindow(MainWindow):
         loadToolBar.addWidget(self.spinbox)"""
 
         #---------- Load our main plot and show the application ----------
-        pvt.set_plotter_parameters(self.plotter,reset_cam_orientation=True)
+        pvw.set_plotter_parameters(self.plotter,reset_cam_orientation=True)
         self.load_main_plot()
 
         # Show the application window
@@ -551,7 +548,7 @@ class MyMainWindow(MainWindow):
         sphere = pv.Sphere()
         self.plotter.add_mesh(sphere, show_edges=True)
 
-        pvt.set_plotter_parameters(self.plotter)
+        pvw.set_plotter_parameters(self.plotter)
 
         self.plotter.reset_camera()
 
@@ -562,7 +559,7 @@ class MyMainWindow(MainWindow):
         cube = pv.Cube()
         self.plotter.add_mesh(cube, show_edges=True)
 
-        pvt.set_plotter_parameters(self.plotter)
+        pvw.set_plotter_parameters(self.plotter)
 
         self.plotter.reset_camera()
     
@@ -572,13 +569,13 @@ class MyMainWindow(MainWindow):
         self.plotter.clear()
         
         # Get the points and scalars from the json file
-        self.main_plot.points, self.main_plot.scalars, _ = pvt.get_video_data(
+        self.main_plot.points, self.main_plot.scalars, _ = pvw.get_video_data(
             file_path=self.main_plot.json_filepath, 
             scalar_threshold=self.main_plot.scalar_threshold,
             dist_between_frames=self.main_plot.dist_between_frames)
 
         # Add the points to the plot
-        pvt.add_plotter_points(
+        pvw.add_plotter_points(
             plotter=self.plotter, 
             points=self.main_plot.points, 
             scalars=self.main_plot.scalars, 
@@ -590,10 +587,10 @@ class MyMainWindow(MainWindow):
         
         if self.main_plot.wireframe:
             # Add a cube around the points to the plot
-            pvt.add_plotter_cube(self.plotter,(self.main_plot.frame_dimensions[0],self.main_plot.frame_dimensions[1],(self.main_plot.num_frames - 1)*self.main_plot.dist_between_frames))
+            pvw.add_plotter_cube(self.plotter,(self.main_plot.frame_dimensions[0],self.main_plot.frame_dimensions[1],(self.main_plot.num_frames - 1)*self.main_plot.dist_between_frames))
         
         # Set the plotter parameters (camera,background etc)
-        pvt.set_plotter_parameters(self.plotter)
+        pvw.set_plotter_parameters(self.plotter)
 
         # Reset the camera
         self.plotter.reset_camera()
@@ -640,8 +637,6 @@ class MyMainWindow(MainWindow):
         
         self.load_main_plot()
         
-    
-
 
 def run_application():
     """run our application"""

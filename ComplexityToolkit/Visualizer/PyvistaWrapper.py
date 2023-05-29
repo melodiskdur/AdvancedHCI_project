@@ -89,14 +89,14 @@ def get_video_data(
         dist_between_frames=1
         ):
     """open and extract points,scalars etc from a data folder"""
-
+    payload = {}
     try:
         # open the file and load the data
         with open(file_path) as f:
             payload = json.load(f)
     except FileNotFoundError:
         print("ERROR: file not found. Try entering a different path in the input field")
-        return np.array([]), np.array([])
+        return np.array([]), np.array([]), payload
     
     # Initialize the points and scalars lists
     points = []
@@ -142,7 +142,6 @@ def get_video_data(
     for index in sorted(indexes_to_remove, reverse=True):
         del points[index]    
         del scalars[index]  
-
 
     return np.array(points), np.array(scalars), params 
 
