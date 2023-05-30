@@ -44,6 +44,12 @@ def read_json(file_name):
         return None
 
 
+#save to a json file
+def save_json(data,file_path):
+     with open(file_path, 'w') as file:
+        json.dump(data, file)
+
+
 def checkURL(url,token):
     if token in url:
         url = url.replace(token,"")

@@ -35,8 +35,3 @@ def change_categories_attributes(data,attributes = False):
         data['frames'][i] = frame_data
 
     return data
-
-#save to a json file
-def save_json(data,file_path):
-     with open(file_path, 'w') as file:
-        json.dump(data, file)
