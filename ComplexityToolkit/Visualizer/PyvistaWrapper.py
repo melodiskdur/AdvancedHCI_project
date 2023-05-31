@@ -46,7 +46,7 @@ def create_nn_scalars(points:np.ndarray, num_neighbors, scalar_threshold=0.5):
 
 def create_3d_points(
         num_points_per_frame:int=100, 
-        frame_dimensions:tuple[int,int]=(10,8), 
+        frame_dimensions=(10,8), 
         num_frames:int=10, 
         dist_between_frames:int=1
         ):
@@ -151,7 +151,7 @@ def get_video_data(
 
 def add_plotter_cube(
         plotter:pv.Plotter,
-        cube_dims:tuple[int,int,int],
+        cube_dims,
         color:str='white',
         style:str='wireframe',
         line_width:int=2
@@ -217,7 +217,7 @@ def set_plotter_parameters(
         bg_color:str='#000000',
         cam_pos:str='xy',
         cam_zoom=1.0,
-        cam_rotation:tuple[int,int,int]=(45,15,0),
+        cam_rotation=(45,15,0),
         add_axes:bool=True,
         reset_cam_orientation:bool=False
         ):
