@@ -3,7 +3,7 @@ import numpy as np
 # from sklearn.cluster import DBSCAN
 
 
-def group_category_by_position(parsed_data: dict, category: str, threshold: float = 1000.0, max_distance: float = 100.0) -> dict:
+def group_category_by_position(parsed_data, category: str, threshold: float = 1000.0, max_distance: float = 100.0) -> dict:
     frames = parsed_data['frames']
     frames = LabelParser.select_parsed_data_by_category(parsed_data=frames, category=category)
     frames = [_calculate_boundingbox_areas(frame_data=frames[i]) for i, _ in enumerate(frames)]

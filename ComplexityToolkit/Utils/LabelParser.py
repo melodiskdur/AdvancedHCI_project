@@ -36,7 +36,7 @@ def select_attribute_by_state(attribute_data: dict, state: str) -> dict:
 
 def read_json(file_name):
     try:
-        with open(file_name) as file:
+        with open(file_name,"r") as file:
             data = json.load(file)
             return data
     except FileNotFoundError as e:
