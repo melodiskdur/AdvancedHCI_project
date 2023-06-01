@@ -8,7 +8,7 @@ def group_category_by_position(parsed_data, category: str, threshold: float = 10
     frames = LabelParser.select_parsed_data_by_category(parsed_data=frames, category=category)
     frames = [_calculate_boundingbox_areas(frame_data=frames[i]) for i, _ in enumerate(frames)]
     frames = [_calculate_centers(frame_data=frames[i]) for i, _ in enumerate(frames)]
-    groupings = {'frames': []}
+    groupings = []
     for frame in frames:
         frame_groupings = []
         for i, box in enumerate(frame['labels']):
@@ -17,9 +17,9 @@ def group_category_by_position(parsed_data, category: str, threshold: float = 10
                     continue
                 if _group_analyzer(box['box2d'],frame['labels'][j]['box2d'], threshold, max_distance):
                     frame_groupings.append((box,frame['labels'][j]))
-        groupings['frames'].append(frame_groupings)
+        groupings.append(frame_groupings)
 
-    return { 'frames': [_finalize_groups_frame(groupings_frame=groupings['frames'][i]) for i, _ in enumerate(groupings['frames'])]}
+    return { 'frames': [_finalize_groups_frame(groupings_frame=groupings[i]) for i in range(len(groupings))]}
 
 
 def regroup_by_attribute_state(grouped_data: dict, attribute: str, state: str) -> dict:
@@ -30,6 +30,19 @@ def regroup_by_attribute_state(grouped_data: dict, attribute: str, state: str) -
                            for group in frame]
         groupings['frames'].append([group for group in frame_groupings if len(group) > 1])
     return groupings
+
+
+def group_centers_n_radii(grouped_data: dict) -> dict:
+    frames = grouped_data['frames']
+    # Same format as everywhere else.
+    groupings_centers = {'frames': []}
+    groupings_radii = {'frames': []}
+    for frame in frames:
+        frame_grouping_centers = [_center_of_mass_group(group=group) for group in frame]
+        frame_grouping_radii = [_radius_group(group=group, center_of_mass=mass) for group, mass in zip(frame, frame_grouping_centers)]
+        groupings_centers['frames'].append([group for group in frame_grouping_centers if len(group) > 1])
+        groupings_radii['frames'].append([group for group in frame_grouping_radii if len(group) > 1])
+    return groupings_centers, groupings_radii
 
 
 def _finalize_groups_frame(groupings_frame: list) -> list:
@@ -73,14 +86,29 @@ def _calculate_centers(frame_data: dict) -> dict:
     return frame_data
 
 
-def _group_analyzer(box2d_A: dict, box2d_B: dict, threshold: float=1000.0, max_distance: float=100.0) -> bool:
-    if min(box2d_A['area'], box2d_B['area']) / max(box2d_A['area'], box2d_B['area']) < 0.70:
+def _group_analyzer(box2d_A: dict, box2d_B: dict, threshold: float=0.70, max_distance: float=100.0) -> bool:
+    if min(box2d_A['area'], box2d_B['area']) / max(box2d_A['area'], box2d_B['area']) < threshold:
         return False
-    if (norm := np.linalg.norm(np.array(box2d_A['center']) - np.array(box2d_B['center']))) > max_distance*(box2d_A['area']/10):
+    if (norm := np.linalg.norm(np.array(box2d_A['center']) - np.array(box2d_B['center']))) > max_distance*(box2d_A['area']/1):
         return False
     return True
 
+def _center_of_mass_group(group: list) ->list:
+    centroid = list()
+    for bo in group:
+        groupx = list()
+        groupy = list()
+        for box in bo:
+            groupx.append(box['box2d']['center'][0])
+            groupy.append(box['box2d']['center'][1])
+        centroid.append(np.array([np.mean(groupx, axis = 0), np.mean(groupy, axis = 0)]))
+    return centroid
 
+def _radius_group(group: list, center_of_mass: tuple) -> float:
+    # Select the corner that is furthest away from the center of mass.
+    pass
+
+#NOTE: Out of Service
 def _overlap(box2d_A: dict, box2d_B: dict) -> bool:
     # Check if the two boxed do NOT overlap, and return the opposite bool.
     return not (box2d_A['x1'] > box2d_B['x2'] or box2d_B['x1'] > box2d_A['x2']) or \

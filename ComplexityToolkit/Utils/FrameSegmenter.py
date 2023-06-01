@@ -25,6 +25,19 @@ def segment_frame(image: Image, num_segments: tuple = (1, 1)) -> dict:
             for i in range(rows) for j in range(cols)}
 
 
+def grid_centers(window_size: tuple = (1920, 1080), grid_dimensions: tuple = (10, 20)) -> list:
+    size_row, size_col = _calculate_segment_size(window_size, grid_dimensions) // 2
+    return [(i*size_row, j*size_col) for i in range(grid_dimensions[0]) for j in range(grid_dimensions[1])]
+
+# [(x1, y1), (x2, y2), ... ]
+def points_within_radius(o, r, points):
+    points_wr = []
+    for p in points:
+        if ((o[0] - p[0])**2+(o[1] - p[1])**2) < r ** 2:
+            points_wr.append(p)
+    return points_wr
+    
+
 def _calculate_segment_size(img_size, num_segments) -> tuple:
     return img_size[1] // num_segments[0], img_size[0] // num_segments[1]
 
