@@ -32,7 +32,7 @@ def regroup_by_attribute_state(grouped_data: dict, attribute: str, state: str) -
     return groupings
 
 
-def group_centers_n_radii(grouped_data: dict) -> dict:
+def group_centers_n_radii(grouped_data: dict) -> tuple:
     frames = grouped_data['frames']
     # Same format as everywhere else.
     groupings_centers = {'frames': []}
@@ -40,8 +40,8 @@ def group_centers_n_radii(grouped_data: dict) -> dict:
     for frame in frames:
         frame_grouping_centers = [_center_of_mass_group(group=group) for group in frame]
         frame_grouping_radii = [_radius_group(group=group, center_of_mass=mass) for group, mass in zip(frame, frame_grouping_centers)]
-        groupings_centers['frames'].append([group for group in frame_grouping_centers if len(group) > 1])
-        groupings_radii['frames'].append([group for group in frame_grouping_radii if len(group) > 1])
+        groupings_centers['frames'].append([group for group in frame_grouping_centers])
+        groupings_radii['frames'].append([group for group in frame_grouping_radii])
     return groupings_centers, groupings_radii
 
 
@@ -93,21 +93,30 @@ def _group_analyzer(box2d_A: dict, box2d_B: dict, threshold: float=0.70, max_dis
         return False
     return True
 
-def _center_of_mass_group(group: list) ->list:
-    centroid = list()
-    for bo in group:
-        groupx = list()
-        groupy = list()
-        for box in bo:
-            groupx.append(box['box2d']['center'][0])
-            groupy.append(box['box2d']['center'][1])
-        centroid.append(np.array([np.mean(groupx, axis = 0), np.mean(groupy, axis = 0)]))
-    return centroid
+
+def _center_of_mass_group(group: list) -> tuple:
+    groupx = list()
+    groupy = list()
+    for box in group:
+        groupx.append(box['box2d']['center'][0])
+        groupy.append(box['box2d']['center'][1])
+    return (np.mean(groupx, axis = 0), np.mean(groupy, axis = 0))
+
 
 def _radius_group(group: list, center_of_mass: tuple) -> float:
     # Select the corner that is furthest away from the center of mass.
-    pass
+    point_list = [(obj['box2d']['x1'], obj['box2d']['y1']) for obj in group] + \
+                 [(obj['box2d']['x2'], obj['box2d']['y2']) for obj in group] + \
+                 [(obj['box2d']['x1'], obj['box2d']['y2']) for obj in group] + \
+                 [(obj['box2d']['x2'], obj['box2d']['y1']) for obj in group]
+    
+    # Do radius thing.
+    point_list_sorted = sorted(point_list, key=lambda p: (center_of_mass[0] - p[0])**2+(center_of_mass[1] - p[1])**2)
 
+    # Return the radius that correpsonds to the largest distance between com and box corner.
+    return np.sqrt((center_of_mass[0] - point_list_sorted[-1][0])**2+(center_of_mass[1] - point_list_sorted[-1][1])**2)
+    
+    
 #NOTE: Out of Service
 def _overlap(box2d_A: dict, box2d_B: dict) -> bool:
     # Check if the two boxed do NOT overlap, and return the opposite bool.
