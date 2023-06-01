@@ -32,6 +32,19 @@ def regroup_by_attribute_state(grouped_data: dict, attribute: str, state: str) -
     return groupings
 
 
+def group_centers_n_radii(grouped_data: dict) -> dict:
+    frames = grouped_data['frames']
+    # Same format as everywhere else.
+    groupings_centers = {'frames': []}
+    groupings_radii = {'frames': []}
+    for frame in frames:
+        frame_grouping_centers = [_center_of_mass_group(group=group) for group in frame]
+        frame_grouping_radii = [_radius_group(group=group, center_of_mass=mass) for group, mass in zip(frame, frame_grouping_centers)]
+        groupings_centers['frames'].append([group for group in frame_grouping_centers if len(group) > 1])
+        groupings_radii['frames'].append([group for group in frame_grouping_radii if len(group) > 1])
+    return groupings_centers, groupings_radii
+
+
 def _finalize_groups_frame(groupings_frame: list) -> list:
     finalized_groups = []
     for pair in groupings_frame:
@@ -80,7 +93,7 @@ def _group_analyzer(box2d_A: dict, box2d_B: dict, threshold: float=0.70, max_dis
         return False
     return True
 
-def _center_of_mass_group(group: list) ->list():
+def _center_of_mass_group(group: list) ->list:
     centroid = list()
     for bo in group:
         groupx = list()
@@ -91,7 +104,9 @@ def _center_of_mass_group(group: list) ->list():
         centroid.append(np.array([np.mean(groupx, axis = 0), np.mean(groupy, axis = 0)]))
     return centroid
 
-
+def _radius_group(group: list, center_of_mass: tuple) -> float:
+    # Select the corner that is furthest away from the center of mass.
+    pass
 
 #NOTE: Out of Service
 def _overlap(box2d_A: dict, box2d_B: dict) -> bool:
