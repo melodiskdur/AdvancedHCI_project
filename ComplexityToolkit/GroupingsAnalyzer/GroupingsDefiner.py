@@ -3,12 +3,12 @@ import numpy as np
 # from sklearn.cluster import DBSCAN
 
 
-def group_category_by_position(parsed_data: dict, category: str, threshold: float = 1000.0, max_distance: float = 100.0) -> dict:
+def group_category_by_position(parsed_data: dict, category: str, threshold: float = 0.10, max_distance: float = 100.0) -> dict:
     frames = parsed_data['frames']
     frames = LabelParser.select_parsed_data_by_category(parsed_data=frames, category=category)
     frames = [_calculate_boundingbox_areas(frame_data=frames[i]) for i, _ in enumerate(frames)]
     frames = [_calculate_centers(frame_data=frames[i]) for i, _ in enumerate(frames)]
-    groupings = {'frames': []}
+    groupings = []
     for frame in frames:
         frame_groupings = []
         for i, box in enumerate(frame['labels']):
@@ -17,9 +17,9 @@ def group_category_by_position(parsed_data: dict, category: str, threshold: floa
                     continue
                 if _group_analyzer(box['box2d'],frame['labels'][j]['box2d'], threshold, max_distance):
                     frame_groupings.append((box,frame['labels'][j]))
-        groupings['frames'].append(frame_groupings)
+        groupings.append(frame_groupings)
 
-    return { 'frames': [_finalize_groups_frame(groupings_frame=groupings['frames'][i]) for i, _ in enumerate(groupings['frames'])]}
+    return { 'frames': [_finalize_groups_frame(groupings_frame=groupings[i]) for i in range(len(groupings))]}
 
 
 def regroup_by_attribute_state(grouped_data: dict, attribute: str, state: str) -> dict:
@@ -73,14 +73,27 @@ def _calculate_centers(frame_data: dict) -> dict:
     return frame_data
 
 
-def _group_analyzer(box2d_A: dict, box2d_B: dict, threshold: float=1000.0, max_distance: float=100.0) -> bool:
-    if min(box2d_A['area'], box2d_B['area']) / max(box2d_A['area'], box2d_B['area']) < 0.70:
+def _group_analyzer(box2d_A: dict, box2d_B: dict, threshold: float=0.70, max_distance: float=100.0) -> bool:
+    if min(box2d_A['area'], box2d_B['area']) / max(box2d_A['area'], box2d_B['area']) < threshold:
         return False
-    if (norm := np.linalg.norm(np.array(box2d_A['center']) - np.array(box2d_B['center']))) > max_distance*(box2d_A['area']/10):
+    if (norm := np.linalg.norm(np.array(box2d_A['center']) - np.array(box2d_B['center']))) > max_distance*(box2d_A['area']/1):
         return False
     return True
 
+def _center_of_mass_group(group: list) ->list():
+    centroid = list()
+    for bo in group:
+        groupx = list()
+        groupy = list()
+        for box in bo:
+            groupx.append(box['box2d']['center'][0])
+            groupy.append(box['box2d']['center'][1])
+        centroid.append(np.array([np.mean(groupx, axis = 0), np.mean(groupy, axis = 0)]))
+    return centroid
 
+
+
+#NOTE: Out of Service
 def _overlap(box2d_A: dict, box2d_B: dict) -> bool:
     # Check if the two boxed do NOT overlap, and return the opposite bool.
     return not (box2d_A['x1'] > box2d_B['x2'] or box2d_B['x1'] > box2d_A['x2']) or \
