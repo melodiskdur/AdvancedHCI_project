@@ -36,7 +36,21 @@ def change_categories_attributes(data,attributes = False):
 
     return data
 
-#save to a json file
-def save_json(data,file_path):
-     with open(file_path, 'w') as file:
-        json.dump(data, file)
+
+def delete_frames(data: dict, delframes: list) -> dict:
+    for i in delframes:
+        del data['frames'][i]
+    return data
+
+
+def start_frame(data: dict, startframe: int) -> dict:
+    for i in range(startframe):
+        del data['frames'][i]
+    return data
+
+
+def sort_frames(data: dict) -> dict:
+    frames = data['frames']
+    frames = sorted(frames, key=lambda d: d['name']) 
+    data['frames'] = frames
+    return data

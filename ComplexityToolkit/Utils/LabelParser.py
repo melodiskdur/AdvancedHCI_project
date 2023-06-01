@@ -36,12 +36,18 @@ def select_attribute_by_state(attribute_data: dict, state: str) -> dict:
 
 def read_json(file_name):
     try:
-        with open(file_name) as file:
+        with open(file_name,"r") as file:
             data = json.load(file)
             return data
     except FileNotFoundError as e:
         print(f"label_parser.read_json(): Couldn't read the file '{file_name}'")
         return None
+
+
+#save to a json file
+def save_json(data,file_path):
+     with open(file_path, 'w') as file:
+        json.dump(data, file)
 
 
 def checkURL(url,token):
