@@ -3,7 +3,7 @@ import numpy as np
 # from sklearn.cluster import DBSCAN
 
 
-def group_category_by_position(parsed_data, category: str, threshold: float = 1000.0, max_distance: float = 100.0) -> dict:
+def group_category_by_position(parsed_data, category: str, threshold: float = 0.70, max_distance: float = 100.0) -> dict:
     frames = parsed_data['frames']
     frames = LabelParser.select_parsed_data_by_category(parsed_data=frames, category=category)
     frames = [_calculate_boundingbox_areas(frame_data=frames[i]) for i, _ in enumerate(frames)]
@@ -20,6 +20,27 @@ def group_category_by_position(parsed_data, category: str, threshold: float = 10
         groupings.append(frame_groupings)
 
     return { 'frames': [_finalize_groups_frame(groupings_frame=groupings[i]) for i in range(len(groupings))]}
+
+def boxes_category_by_position(parsed_data, category: str):
+    frames = parsed_data['frames']
+    frames = LabelParser.select_parsed_data_by_category(parsed_data=frames, category=category)
+    frames = [_calculate_boundingbox_areas(frame_data=frames[i]) for i, _ in enumerate(frames)]
+    frames = [_calculate_centers(frame_data=frames[i]) for i, _ in enumerate(frames)]
+    boxings = []
+    for frame in frames:
+        frame_boxings = [box for box in frame['labels']]
+        boxings.append(frame_boxings)
+
+    return {'frames': boxings}
+
+
+def rebox_by_attribute_state(boxed_data: dict, attribute: str, state: str) -> dict:
+    frames = boxed_data['frames']
+    boxings = {'frames': []}
+    for frame in frames:
+        frame_boxings = [obj for obj in frame if obj['attributes'].get(attribute) and obj['attributes'][attribute] == state]
+        boxings['frames'].append([box for box in frame_boxings])
+    return boxings
 
 
 def regroup_by_attribute_state(grouped_data: dict, attribute: str, state: str) -> dict:
@@ -45,6 +66,19 @@ def group_centers_n_radii(grouped_data: dict) -> tuple:
     return groupings_centers, groupings_radii
 
 
+def centers_n_radii(data: dict) -> tuple:
+    frames = data['frames']
+    # Same format as everywhere else.
+    boxes_centers = {'frames': []}
+    boxes_radii = {'frames': []}
+    for frame in frames:
+        frame_boxes_centers = [box['box2d']['center'] for box in frame]
+        frame_boxes_radii = [_radius_box(box=box) for box in frame]
+        boxes_centers['frames'].append([box for box in frame_boxes_centers])
+        boxes_radii['frames'].append([box for box in frame_boxes_radii])
+    return boxes_centers, boxes_radii
+
+
 def _finalize_groups_frame(groupings_frame: list) -> list:
     finalized_groups = []
     for pair in groupings_frame:
@@ -68,6 +102,13 @@ def _finalize_groups_frame(groupings_frame: list) -> list:
 
 def _in_group(obj: dict, group: set) -> bool:
     return obj['id'] in { o['id'] for o in group }
+
+
+def _radius_box(box: dict):
+    if box['category'] == 'vehicle':
+        return 2* np.sqrt(float(box['box2d']['area']) / np.pi)
+    else:
+        return 4* np.sqrt(float(box['box2d']['area']) / np.pi)
 
 
 def _calculate_boundingbox_areas(frame_data: dict) -> dict:
@@ -114,7 +155,7 @@ def _radius_group(group: list, center_of_mass: tuple) -> float:
     point_list_sorted = sorted(point_list, key=lambda p: (center_of_mass[0] - p[0])**2+(center_of_mass[1] - p[1])**2)
 
     # Return the radius that correpsonds to the largest distance between com and box corner.
-    return np.sqrt((center_of_mass[0] - point_list_sorted[-1][0])**2+(center_of_mass[1] - point_list_sorted[-1][1])**2)
+    return 2* np.sqrt((center_of_mass[0] - point_list_sorted[-1][0])**2+(center_of_mass[1] - point_list_sorted[-1][1])**2)
     
     
 #NOTE: Out of Service

@@ -28,7 +28,7 @@ def segment_frame(image: Image, num_segments: tuple = (1, 1)) -> dict:
 def grid_centers(window_size: tuple = (1920, 1080), grid_dimensions: tuple = (10, 20)) -> list:
     a, b = _calculate_segment_size(window_size, grid_dimensions)
     size_row, size_col = a // 2 , b // 2
-    return [((i+1)*size_row, (j+1)*size_col) for i in range(grid_dimensions[0]) for j in range(grid_dimensions[1])]
+    return [((b * i) + size_row, (a * j)  + size_col) for i in range(grid_dimensions[1]) for j in range(grid_dimensions[0])]
 
 # [(x1, y1), (x2, y2), ... ]
 def _points_within_radius(c, r, points):
