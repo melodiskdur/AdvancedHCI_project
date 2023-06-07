@@ -42,13 +42,8 @@ def _points_within_radius(c, r, points):
 def points_within_radii(g_centers : dict, g_radii : dict, points: list) -> dict:
     centers = g_centers['frames']
     radii = g_radii['frames']
-    #print(radii)
     return {'frames' : [[_points_within_radius(c,r,points) for c, r in zip(c_g, r_g)] for c_g, r_g in zip(centers,radii)]}
-    # {'frames' : [ [[(1,2),(3,4)], [(1,2),(3,4)]], [[(1,2),(3,4)], [(1,2),(3,4)]] ]        
-    
-    #centers = [[(2,3),(2,3)],[(1,2),(3,4)]]
-    #c_f = [(1,2),(3,4)]
-    #c = (1,2)
+
 
 def _calculate_segment_size(img_size, num_segments) -> tuple:
     return img_size[1] // num_segments[0], img_size[0] // num_segments[1]
