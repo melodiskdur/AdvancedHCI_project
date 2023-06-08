@@ -29,30 +29,38 @@ class MainPlot():
         self.frame = QtWidgets.QFrame()
         
         #-----------
-        self.dist_between_frames = 100
-        self.point_size = 10
+        self.dist_between_frames = 10
+        self.point_size = 5
         self.scalar_threshold = 0
 
         #-----------
-        self.wireframe = False
+        self.wireframe = True
         self.gaussian_points = True
-        self.emissive_points = False
+        self.emissive_points = True
         self.render_points_as_spheres = True
         
         #-----------
-        self.json_filepath = 'H:/Kursmaterial/AdvancedHCI/tokyo_15frames.json'
+        self.json_filepath = 'H:/Kursmaterial/AdvancedHCI/Presentation/Final/Data/GroupingData/NewDelhi1_Annotated_p_complexities.json'
+        self.scalar_type = "grouping_complexity"
 
         #-----------
         self.points, self.scalars, params = pvw.get_video_data(
+            scalar_type=self.scalar_type,
             file_path=self.json_filepath, 
             scalar_threshold=self.scalar_threshold,
             dist_between_frames=self.dist_between_frames)
         
         #-----------
-        self.frame_dimensions = (params['image_width'],params['image_height'])
-        self.num_frames = params['number_of_frames']
-        self.dimensions = params['dimensions']
-        self.folder_name = params['folder_name']
+        if params != None:
+            self.frame_dimensions = (params['image_width'],params['image_height'])
+            self.num_frames = params['number_of_frames']
+            #self.dimensions = params['dimensions']
+            #self.folder_name = params['folder_name']
+        else:
+            self.frame_dimensions = (1,1)
+            self.num_frames = 0
+            #self.dimensions = (1,1)
+            #self.folder_name = ""
         
         #----------- 
         if len(self.scalars) != 0:
@@ -71,6 +79,9 @@ class MainPlot():
         #self.load_points()
         #self.load_scalars()
         #------------------------
+        
+    def set_scalar_type(self,stype:str):
+        self.scalar_type = stype
     
     def set_filepath(self,path:str):
         self.json_filepath = path
@@ -175,6 +186,7 @@ class MyMainWindow(MainWindow):
         scalar_threshold_vbox_slider = self.create_vbox_slider(
             range=(math.floor(self.main_plot.scalar_range[0]),math.ceil(self.main_plot.scalar_range[1])),
             init_value=int(self.main_plot.scalar_threshold),
+            tick_interval=1,
             label_text='Scalar Threshold: ',
             set_method=self.main_plot.set_scalar_threshold)
         
@@ -187,14 +199,14 @@ class MyMainWindow(MainWindow):
         dist_between_frames_vbox_slider = self.create_vbox_slider(
             range=(0,100),
             init_value=int(self.main_plot.dist_between_frames),
-            tick_interval=10,
+            tick_interval=5,
             label_text='Dist Frames: ',
             set_method=self.main_plot.set_dist_between_frames)
         
         point_size_vbox_slider = self.create_vbox_slider(
             range=(0,80),
             init_value=int(self.main_plot.point_size),
-            tick_interval=5,
+            tick_interval=2,
             label_text='Point Size: ',
             set_method=self.main_plot.set_point_size)
         
@@ -230,12 +242,22 @@ class MyMainWindow(MainWindow):
         
         #---------------
         # Input field 
-        inputfield_vbox = self.create_input_field(
+        inputfield_vbox_filepath = self.create_input_field(
+            method = 'filepath',
             name='Filepath',
             max_size=(110,30),
             init_text=self.main_plot.json_filepath,
             btn_text='Load',
             btn_width=40)
+        
+        inputfield_vbox_scalar = self.create_input_field(
+            method = 'scalar',
+            name='Scalar Type',
+            max_size=(110,30),
+            init_text=self.main_plot.scalar_type,
+            btn_text='Load',
+            btn_width=40)
+
         
         #---------------
         # TODO: continue on this. Selection for color_map
@@ -250,14 +272,16 @@ class MyMainWindow(MainWindow):
 
         #---------------
         # Add everything to the parameter layout
-        param_vlayout.addLayout(inputfield_vbox)
+        param_vlayout.addLayout(inputfield_vbox_filepath)
+        param_vlayout.addLayout(inputfield_vbox_scalar)
         param_vlayout.addLayout(scalar_threshold_vbox_slider)
         param_vlayout.addLayout(num_frames_vbox_slider)
         param_vlayout.addLayout(dist_between_frames_vbox_slider)
         param_vlayout.addLayout(point_size_vbox_slider)
         param_vlayout.addLayout(cb_vlayout)
         param_vlayout.addLayout(layout)
-
+        
+        
         # Add the parameter layout to the main layout
         hlayout.addLayout(param_vlayout,0)
 
@@ -374,6 +398,7 @@ class MyMainWindow(MainWindow):
 
     def create_input_field(
             self,
+            method,
             name='INPUT',
             max_size=None,
             init_text='',
@@ -400,9 +425,13 @@ class MyMainWindow(MainWindow):
         inputfield.setText(init_text)
 
         # Create the button
-        btn = self.create_button(lambda: self.change_filepath(inputfield),btn_text)
+        if method == 'filepath':
+            btn = self.create_button(lambda: self.change_filepath(inputfield),btn_text)
+        elif method == 'scalar':
+            btn = self.create_button(lambda: self.change_scalar_type(inputfield),btn_text)
+            
         btn.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed,
-                                                 QtWidgets.QSizePolicy.Fixed))
+                                                QtWidgets.QSizePolicy.Fixed))
         
         btn.setFixedWidth(btn_width)
 
@@ -569,10 +598,15 @@ class MyMainWindow(MainWindow):
         self.plotter.clear()
         
         # Get the points and scalars from the json file
-        self.main_plot.points, self.main_plot.scalars, _ = pvw.get_video_data(
+        self.main_plot.points, self.main_plot.scalars, params = pvw.get_video_data(
+            scalar_type=self.main_plot.scalar_type,
             file_path=self.main_plot.json_filepath, 
             scalar_threshold=self.main_plot.scalar_threshold,
             dist_between_frames=self.main_plot.dist_between_frames)
+        
+        if params != None:
+            self.main_plot.frame_dimensions = (params['image_width'],params['image_height'])
+            self.main_plot.num_frames = params['number_of_frames']
 
         # Add the points to the plot
         pvw.add_plotter_points(
@@ -614,6 +648,14 @@ class MyMainWindow(MainWindow):
         """change the filepath in our main plot"""
         # Set the filepath
         self.main_plot.set_filepath(copy.copy(inputfield.text()))
+
+        # Reload the main plot
+        self.load_main_plot()
+        
+    def change_scalar_type(self, inputfield:QtWidgets.QLineEdit):
+        """change the scalar_type in our main plot"""
+        # Set the filepath
+        self.main_plot.set_scalar_type(copy.copy(inputfield.text()))
 
         # Reload the main plot
         self.load_main_plot()
