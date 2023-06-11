@@ -89,7 +89,7 @@ def get_video_data(
         dist_between_frames=1
         ):
     """open and extract points,scalars etc from a data folder"""
-    payload = {}
+    payload = None
     try:
         # open the file and load the data
         with open(file_path) as f:
@@ -117,11 +117,17 @@ def get_video_data(
                 points.append(np.array([float(val['center_xy'][0]),-float(val['center_xy'][1]),-i*dist_between_frames]))
 
                 # Add the wanted scalar
-                if scalar_type == 'feature_congestion':
-                    scalars.append(val['feature_congestion'])
+                try:
+                    if scalar_type == 'feature_congestion':
+                        scalars.append(val['feature_congestion'])
 
-                elif scalar_type == 'subband_entropy':
-                    scalars.append(val['subband_entropy'])
+                    elif scalar_type == 'subband_entropy':
+                        scalars.append(val['subband_entropy'])
+                        
+                    elif scalar_type == 'grouping_complexity':
+                        scalars.append(val['grouping_complexity'])
+                except KeyError:
+                    scalars.append(0)
    
     # Scale the scalars to fit fully within [0,1]
     #scalars = force_within_range(scalars)
